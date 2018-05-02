@@ -123,6 +123,19 @@ class Allocation():
               freeness-based write locations. Note that this isn't scaled by
               `write_gate`; this scaling must be applied externally.
         """
+        with tf.name_scope('write_allocation_weights'):
+            # expand gatings over memory locations
+            write_gates = tf.expand_dims(write_gates, -1)
+
+            allocation_weights = []
+            for i in range(num_writes):
+                allocation_weights.append(self.get_allocation(usage))
+                # update usage to take into account writing to this new allocation
+                usage += ((1 - usage) * write_gates[:, i, :] * allocation_weights[i])
+
+            # Pack the allocation weights for the write heads into one tensor.
+            return tf.stack(allocation_weights, axis=1)
+
 
     def get_allocation(self, usage):
         r"""Computes allocation by sorting `usage`.
@@ -296,6 +309,34 @@ class TemporalLinkage():
         return TemporalLinkageState(
             link=link, precedence_weights=precedence_weights)
 
+    def directional_read_weights(self, link, prev_read_weights, forward):
+        """Calculates the forward or the backward read weights.
+
+        For each read head (at a given address), there are `num_writes` link graphs
+        to follow. Thus this function computes a read address for each of the
+        `num_reads * num_writes` pairs of read and write heads.
+
+        Args:
+          link: tensor of shape `[batch_size, num_writes, memory_size,
+              memory_size]` representing the link graphs L_t.
+          prev_read_weights: tensor of shape `[batch_size, num_reads,
+              memory_size]` containing the previous read weights w_{t-1}^r.
+          forward: Boolean indicating whether to follow the "future" direction in
+              the link graph (True) or the "past" direction (False).
+
+        Returns:
+          tensor of shape `[batch_size, num_reads, num_writes, memory_size]`
+        """
+        with tf.name_scope('directional_read_weights'):
+            # We calculate the forward and backward directions for each pair of
+            # read and write heads; hence we need to tile the read weights and do a
+            # sort of "outer product" to get this.
+            expanded_read_weights = tf.stack([prev_read_weights] * self.num_writes,
+                                             1)
+            result = tf.matmul(expanded_read_weights, link, adjoint_b=forward)
+            # Swap dimensions 1, 2 so order is [batch, reads, writes, memory]:
+            return tf.transpose(result, perm=[0, 2, 1, 3])
+
     def precedence_weights(self, prev_precedence_weights, write_weights):
         """Calculates the new precedence weights given the current write weights.
 
@@ -421,6 +462,21 @@ if __name__ == "__main__":
     #     print(indices)
     #     print(inverse_indices)
     #     print(allocation)
+
+    ################################################
+    # test Allocation.write_allocation_weights
+
+    # usage = tf.constant(np.random.rand(batch_size, memory_size))
+    # write_gates = tf.constant(np.random.rand(batch_size, num_writes))
+    # allocation_weights = allocation.write_allocation_weights(
+    #     usage=usage,
+    #     write_gates=write_gates,
+    #     num_writes=num_writes
+    # )
+    #
+    # with tf.Session() as sess:
+    #     allocation_weights = sess.run(allocation_weights)
+    #     print(allocation_weights)
 
     ##############################################
     ##############################################
