@@ -1,6 +1,7 @@
 import tensorflow as tf
 import collections
 import memory_Addressing
+import numpy as np
 
 AccessState = collections.namedtuple('AccessState', (
     'memory', 'read_weights', 'write_weights', 'linkage', 'usage'))
@@ -51,6 +52,19 @@ class Memory_Access():
           [batch_size, num_reads, word_size], and `next_state` is the new
           `AccessState` named tuple at the current time t.
         """
+        # expand dimension
+        inputs = tf.expand_dims(input=inputs,
+                                axis=1)
+        # linear transformation
+        inputs = tf.matmul(inputs,
+                           tf.Variable(tf.random_normal(shape=[inputs.get_shape().as_list()[0],
+                                                                     inputs.get_shape().as_list()[2],
+                                                                     self.word_size * self.num_reads + 3 * self.word_size + 5 * self.num_reads + 3],
+                                                              dtype=tf.float32)
+                           ))
+        # decrease dimension
+        inputs = tf.reduce_sum(input_tensor=inputs,
+                               axis=1)
         inputs = self.parse_input(controller_input=inputs)
 
         # Update usage using inputs['free_gate'] and previous read & write weights.
@@ -84,6 +98,7 @@ class Memory_Access():
             prev_read_weights=prev_access_state.read_weights,
             link=linkage_state.link
         )
+        # read_words.shape = [batch_size, num_reads, word_size]
         read_words = tf.matmul(read_weights, memory)
 
         return read_words, AccessState(
@@ -93,7 +108,6 @@ class Memory_Access():
             linkage=linkage_state,
             usage=usage
         )
-
 
     def parse_input(self, controller_input):
         """parse the controller_input
@@ -335,9 +349,34 @@ class Memory_Access():
 
             return read_weights
 
-# test
+    def initial_state(self, batch_size, dtype=tf.float64):
+        AccessState.memory = tf.constant(value=np.random.rand(batch_size, self.memory_size, self.word_size),
+                                         dtype=dtype)
 
-import numpy as np
+        AccessState.read_weights = tf.constant(value=np.random.rand(batch_size, self.num_reads, self.memory_size),
+                                         dtype=dtype)
+
+        AccessState.write_weights = tf.constant(value=np.random.rand(batch_size, self.num_writes, self.memory_size),
+                                         dtype=dtype)
+
+        memory_Addressing.TemporalLinkageState.link = tf.constant(
+            value=np.random.rand(batch_size, self.num_writes, self.memory_size, self.memory_size),
+                                         dtype=dtype)
+        memory_Addressing.TemporalLinkageState.precedence_weights = tf.constant(
+            value=np.random.rand(batch_size, self.num_writes, self.memory_size),
+                                         dtype=dtype)
+        AccessState.linkage = memory_Addressing.TemporalLinkageState
+
+        AccessState.usage = tf.constant(value=np.random.rand(batch_size, self.memory_size),
+                                         dtype=dtype)
+
+        return AccessState
+
+    def initial_output(self, batch_size, dtype=tf.float64):
+        return tf.constant(value=np.random.rand(batch_size, self.num_reads, self.word_size),
+                           dtype=dtype)
+
+# test
 
 if __name__ == "__main__":
     """set parameters"""
@@ -406,27 +445,16 @@ if __name__ == "__main__":
     ########################################################
     # test Memory_Access.build
 
-    controller_input = tf.constant(
-        np.random.rand(batch_size, word_size * num_reads + 3 * word_size + 5 * num_reads + 3))
-
-    AccessState.memory = tf.constant(np.random.rand(batch_size, memory_size, word_size))
-
-    AccessState.read_weights = tf.constant(np.random.rand(batch_size, num_reads, memory_size))
-
-    AccessState.write_weights = tf.constant(np.random.rand(batch_size, num_writes, memory_size))
-
-    memory_Addressing.TemporalLinkageState.link = tf.constant(
-        np.random.rand(batch_size, num_writes, memory_size, memory_size))
-    memory_Addressing.TemporalLinkageState.precedence_weights = tf.constant(
-        np.random.rand(batch_size, num_writes, memory_size))
-    AccessState.linkage = memory_Addressing.TemporalLinkageState
-
-    AccessState.usage = tf.constant(np.random.rand(batch_size, memory_size))
-
-    read_words, access_state = memoryAccess.build(inputs=controller_input,
-                                                  prev_access_state=AccessState)
-
-    with tf.Session() as sess:
-        read_words, access_state = sess.run([read_words, access_state])
-        print("read_words: \n", read_words)
-        print("access_state: \n", access_state)
+    # controller_input = tf.constant(
+    #     np.random.rand(batch_size, word_size * num_reads + 3 * word_size + 5 * num_reads + 3))
+    #
+    # AccessState = memoryAccess.initial_state(batch_size=batch_size)
+    #
+    # read_words, access_state = memoryAccess.build(inputs=controller_input,
+    #                                               prev_access_state=AccessState)
+    #
+    # with tf.Session() as sess:
+    #     sess.run(tf.global_variables_initializer())
+    #     read_words, access_state = sess.run([read_words, access_state])
+    #     print("read_words: \n", read_words.shape)
+    #     print("access_state: \n", access_state)

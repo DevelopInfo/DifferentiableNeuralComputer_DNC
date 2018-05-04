@@ -2,6 +2,8 @@ import tensorflow as tf
 import collections
 
 """Content-based addressing"""
+
+
 class CosineWeights():
     """Cosine-weighted attention.
 
@@ -23,6 +25,9 @@ class CosineWeights():
         self.name=name
         self.num_heads = num_heads
         self.word_size = word_size
+
+    def __call__(self, memory, keys, strengths):
+        return self.build(memory, keys, strengths)
 
     def build(self, memory, keys, strengths):
         """Connects the CosineWeights module into the graph.
@@ -54,7 +59,7 @@ class CosineWeights():
         return self.weighted_softmax(similarity, strengths)
 
     def vector_norms(self, m):
-        squared_norms = tf.reduce_sum(m * m, axis=2, keep_dims=True)
+        squared_norms = tf.reduce_sum(m * m, axis=2, keepdims=True)
         return tf.sqrt(squared_norms)
 
     def weighted_softmax(self, activations, strengths):
@@ -79,6 +84,8 @@ class CosineWeights():
 
 
 """Dynamic memory allocation"""
+
+
 class Allocation():
     """Memory usage that is increased by writing and decreased by reading.
 
@@ -261,6 +268,7 @@ class Allocation():
 """Temporal memory linkage"""
 TemporalLinkageState = collections.namedtuple('TemporalLinkageState',
                                               ('link', 'precedence_weights'))
+
 
 class TemporalLinkage():
     """Keeps track of write order for forward and backward addressing.
