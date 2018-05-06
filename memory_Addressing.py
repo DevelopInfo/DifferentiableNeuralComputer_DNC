@@ -41,7 +41,7 @@ class CosineWeights():
           Weights tensor of shape `[batch_size, num_heads, memory_size]`.
         """
         # Calculates the inner product between the query vector and words in memory.
-        # dot.shape = [batch_size, num_heads, memory_size]
+        # the shape of dot is [batch_size, num_heads, memory_size]
         dot = tf.matmul(keys, memory, adjoint_b=True)
 
         # Outer product to compute denominator (euclidean norm of query and memory).
@@ -74,11 +74,11 @@ class CosineWeights():
         Returns:
           A tensor of same shape as `activations` with weighted softmax applied.
         """
-        # transformed_strengths.shape = [batch_size, num_heads, 1]
+        # the shape of transformed_strengths is [batch_size, num_heads, 1]
         transformed_strengths = tf.expand_dims(strengths, -1)
-        # sharp_activations.shape = [batch_size, num_heads, memory_size]
+        # the shape of sharp_activations is [batch_size, num_heads, memory_size]
         sharp_activations = activations * transformed_strengths
-        # softmax_weights.shape = [batch_size, num_heads, memory_size]
+        # the shape of softmax_weights is [batch_size, num_heads, memory_size]
         softmax_weights = tf.nn.softmax(sharp_activations, axis=2)
         return softmax_weights
 
