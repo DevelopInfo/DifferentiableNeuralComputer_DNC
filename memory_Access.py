@@ -52,19 +52,7 @@ class Memory_Access():
           [batch_size, num_reads, word_size], and `next_state` is the new
           `AccessState` named tuple at the current time t.
         """
-        # expand dimension
-        inputs = tf.expand_dims(input=inputs,
-                                axis=1)
-        # linear transformation
-        inputs = tf.matmul(inputs,
-                           tf.Variable(tf.random_normal(shape=[inputs.get_shape().as_list()[0],
-                                                                     inputs.get_shape().as_list()[2],
-                                                                     self.word_size * self.num_reads + 3 * self.word_size + 5 * self.num_reads + 3],
-                                                              dtype=tf.float32)
-                           ))
-        # decrease dimension
-        inputs = tf.reduce_sum(input_tensor=inputs,
-                               axis=1)
+
         inputs = self.parse_input(controller_input=inputs)
 
         # Update usage using inputs['free_gate'] and previous read & write weights.
@@ -112,12 +100,26 @@ class Memory_Access():
     def parse_input(self, controller_input):
         """parse the controller_input
         Args:
-            controller_input: tensor of shape = [batch_size, WR+3W+5R+3].
+            controller_input: tensor of shape = [batch_size, input_size].
         Returns:
             A tuple = (read_keys, read_strengths, write_key, write_strength,
             erase_vector, write_vector, free_gates, allocation_gate,
             write_gate, read_modes).
         """
+        # expand dimension
+        inputs = tf.expand_dims(input=controller_input,
+                                axis=1)
+        # linear transformation
+        inputs = tf.matmul(inputs,
+                           tf.Variable(tf.random_normal(shape=[inputs.get_shape().as_list()[0],
+                                                               inputs.get_shape().as_list()[2],
+                                                               self.word_size * self.num_reads + 3 * self.word_size + 5 * self.num_reads + 3],
+                                                        dtype=tf.float32)
+                                       ))
+        # decrease dimension
+        controller_input = tf.reduce_sum(input_tensor=inputs,
+                               axis=1)
+
 
         def oneplus(x):
             return 1 + tf.log( 1 + tf.exp(x))
@@ -193,11 +195,12 @@ class Memory_Access():
         read_modes = controller_input[:,
                      self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 3:
                      self.num_reads * self.word_size + 5 * self.num_reads + 3 * self.word_size + 4]
-        read_modes = tf.nn.softmax(read_modes)
+
         read_modes = tf.reshape(
             tensor=read_modes,
             shape=(batch_size, self.num_reads, 3)
         )
+        read_modes = tf.nn.softmax(logits=read_modes, axis=2)
 
         result = {
             # [batch_size, num_reads, word_size]
@@ -350,7 +353,7 @@ class Memory_Access():
             return read_weights
 
     def initial_state(self, batch_size, dtype=tf.float64):
-        AccessState.memory = tf.constant(value=np.random.rand(batch_size, self.memory_size, self.word_size),
+        AccessState.memory = tf.constant(value=10 * (np.random.rand(batch_size, self.memory_size, self.word_size) - 0.5),
                                          dtype=dtype)
 
         AccessState.read_weights = tf.constant(value=np.random.rand(batch_size, self.num_reads, self.memory_size),
@@ -395,31 +398,39 @@ if __name__ == "__main__":
     ################################################
     # test Memeory_Access.parse_input
 
-    # controller_input = tf.constant(np.random.rand(batch_size, word_size*num_reads + 3*word_size + 5*num_reads + 3))
+    # controller_input = tf.random_normal(
+    #     [batch_size,
+    #     word_size*num_reads + 3*word_size + 5*num_reads + 3])
     #
     # result = memoryAccess.parse_input(controller_input)
     #
     # with tf.Session() as sess:
+    #     sess.run(tf.global_variables_initializer())
     #     result_value = sess.run(result)
-    #     print(result_value['read_keys'])
+    #     print(result_value['read_modes'])
+    #     print(result_value['read_modes'].sum(2))
 
     ####################################################
     # test Memory_Access.write_weights
 
-    # controller_input = tf.constant(
-    #     np.ones(shape=(batch_size, word_size * num_reads + 3 * word_size + 5 * num_reads + 3)))
-    # input = memoryAccess.parse_input(controller_input)
-    #
-    # memory = tf.constant(np.random.rand(batch_size, memory_size, word_size))
-    #
-    # usage = tf.constant(np.random.rand(batch_size, memory_size))
-    # write_weights = memoryAccess.write_weights(inputs=input,
-    #                                            memory=memory,
-    #                                            usage=usage)
-    #
-    # with tf.Session() as sess:
-    #     write_weights = sess.run(write_weights)
-    #     print(write_weights)
+    controller_input = tf.random_normal(
+            shape=[batch_size,
+            word_size*num_reads + 3*word_size + 5*num_reads + 3],
+            dtype=tf.float64)
+
+    input = memoryAccess.parse_input(controller_input)
+
+    memory = tf.constant(np.random.rand(batch_size, memory_size, word_size))
+
+    usage = tf.constant(np.random.rand(batch_size, memory_size))
+    write_weights = memoryAccess.write_weights(inputs=input,
+                                               memory=memory,
+                                               usage=usage)
+
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        write_weights = sess.run(write_weights)
+        print(write_weights)
 
     ######################################################
     # test Memory_Access.read_weights

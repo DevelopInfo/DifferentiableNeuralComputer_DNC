@@ -1,6 +1,11 @@
 import tensorflow as tf
 import collections
 
+
+# Ensure values are greater than epsilon to avoid numerical instability.
+_EPSILON = 1e-6
+
+
 """Content-based addressing"""
 
 
@@ -22,47 +27,50 @@ class CosineWeights():
           word_size: memory word size.
           name: module name (default 'cosine_weights')
         """
-        self.name=name
+        self.name = name
         self.num_heads = num_heads
         self.word_size = word_size
 
     def __call__(self, memory, keys, strengths):
-        return self.build(memory, keys, strengths)
+        return self._build(memory, keys, strengths)
 
-    def build(self, memory, keys, strengths):
+    def _build(self, memory, keys, strengths):
         """Connects the CosineWeights module into the graph.
 
         Args:
           memory: A 3-D tensor of shape `[batch_size, memory_size, word_size]`.
           keys: A 3-D tensor of shape `[batch_size, num_heads, word_size]`.
-          strengths: A 2-D tensor of shape `[batch_size, num_heads]`.
+          strengths: A 2-D tensor of shape `[batch_size, num_heads]` and
+            its value are the value after oneplus function operation.
 
         Returns:
           Weights tensor of shape `[batch_size, num_heads, memory_size]`.
         """
-        # Calculates the inner product between the query vector and words in memory.
-        # the shape of dot is [batch_size, num_heads, memory_size]
-        dot = tf.matmul(keys, memory, adjoint_b=True)
+        with tf.name_scope('Cosine_Weights'):
+            # Calculates the inner product between the query vector and words in memory.
+            # the shape of dot is [batch_size, num_heads, memory_size]
+            dot = tf.matmul(keys, memory, adjoint_b=True, name="dot")
 
-        # Outer product to compute denominator (euclidean norm of query and memory).
-        # memory_norms.shape = [batch_size, memory_size, 1]
-        memory_norms = self.vector_norms(memory)
-        # key_norms.shape = [bat_size, num_heads, 1]
-        key_norms = self.vector_norms(keys)
-        # norm.shape = [batch, num_heads, memory_size]
-        norm = tf.matmul(key_norms, memory_norms, adjoint_b=True)
+            # Outer product to compute denominator (euclidean norm of query and memory).
+            # the shape of memory_norms is [batch_size, memory_size, 1]
+            memory_norms = self.__vector_norms(memory, name="memory_norms")
+            # the shape of key_norms is [bat_size, num_heads, 1]
+            key_norms = self.__vector_norms(keys, name="key_norms")
+            # the shape of norm is [batch, num_heads, memory_size]
+            norm = tf.matmul(key_norms, memory_norms, adjoint_b=True, name="norm")
 
-        # Calculates cosine similarity between the query vector and words in memory.
-        # similarity.shape = [batch_size, num_heads, memory_size]
-        similarity = dot / norm
+            # Calculates cosine similarity between the query vector and words in memory.
+            # the shape of similarity is [batch_size, num_heads, memory_size]
+            similarity = dot / norm
 
-        return self.weighted_softmax(similarity, strengths)
+            return self.__weighted_softmax(similarity, strengths, name="cosine_weights")
 
-    def vector_norms(self, m):
-        squared_norms = tf.reduce_sum(m * m, axis=2, keepdims=True)
-        return tf.sqrt(squared_norms)
+    def __vector_norms(self, m, name="vector_norms"):
+        with tf.name_scope(name):
+            squared_norms = tf.reduce_sum(m * m, axis=2, keepdims=True)
+            return tf.sqrt(squared_norms + _EPSILON)
 
-    def weighted_softmax(self, activations, strengths):
+    def __weighted_softmax(self, activations, strengths, name="weighted_softmax"):
         """Returns softmax over activations multiplied by positive strengths.
 
         Args:
@@ -74,13 +82,14 @@ class CosineWeights():
         Returns:
           A tensor of same shape as `activations` with weighted softmax applied.
         """
-        # the shape of transformed_strengths is [batch_size, num_heads, 1]
-        transformed_strengths = tf.expand_dims(strengths, -1)
-        # the shape of sharp_activations is [batch_size, num_heads, memory_size]
-        sharp_activations = activations * transformed_strengths
-        # the shape of softmax_weights is [batch_size, num_heads, memory_size]
-        softmax_weights = tf.nn.softmax(sharp_activations, axis=2)
-        return softmax_weights
+        with tf.name_scope(name):
+            # the shape of transformed_strengths is [batch_size, num_heads, 1]
+            transformed_strengths = tf.expand_dims(strengths, -1)
+            # the shape of sharp_activations is [batch_size, num_heads, memory_size]
+            sharp_activations = activations * transformed_strengths
+            # the shape of softmax_weights is [batch_size, num_heads, memory_size]
+            softmax_weights = tf.nn.softmax(sharp_activations, axis=2)
+            return softmax_weights
 
 
 """Dynamic memory allocation"""
@@ -107,6 +116,9 @@ class Allocation():
                  name='allocation'):
         self.name = name
         self.memory_size = memory_size
+
+    def __call__(self, write_weights, free_gates, read_weights, prev_usage):
+        return self._get_usage(write_weights, free_gates, read_weights, prev_usage)
 
     def write_allocation_weights(self, usage, write_gates, num_writes):
         """Calculates freeness-based locations for writing to.
@@ -136,7 +148,7 @@ class Allocation():
 
             allocation_weights = []
             for i in range(num_writes):
-                allocation_weights.append(self.get_allocation(usage))
+                allocation_weights.append(self.__get_allocation(usage))
                 # update usage to take into account writing to this new allocation
                 usage += ((1 - usage) * write_gates[:, i, :] * allocation_weights[i])
 
@@ -144,7 +156,7 @@ class Allocation():
             return tf.stack(allocation_weights, axis=1)
 
 
-    def get_allocation(self, usage):
+    def __get_allocation(self, usage):
         r"""Computes allocation by sorting `usage`.
 
         This corresponds to the value a = a_t[\phi_t[j]] in the paper.
@@ -159,7 +171,7 @@ class Allocation():
         Returns:
           Tensor of shape `[batch_size, memory_size]` corresponding to allocation.
         """
-        with tf.name_scope('allocation'):
+        with tf.name_scope('get_allocation'):
             nonusage = 1 - usage
             #
             # sorted_usage.shape = [batch_size, memory_size]
@@ -173,30 +185,30 @@ class Allocation():
             # sorted_allocation.shape = [batch_size, memory_size]
             sorted_allocation = sorted_nonusage * prod_sorted_usage
 
-            inverse_indices = self.batch_invert_permutation(indices)
+            inverse_indices = self.__batch_invert_permutation(indices)
 
             # This final line "unsorts" sorted_allocation, so that the indexing
             # corresponds to the original indexing of `usage`.
             # allocation.shape = [batch_size, memory_size]
-            allocation = self.batch_gather(sorted_allocation, inverse_indices)
+            allocation = self.__batch_gather(sorted_allocation, inverse_indices)
             # return sorted_allocation, indices, inverse_indices, allocation
             return allocation
 
-    def batch_invert_permutation(self, permutations):
+    def __batch_invert_permutation(self, permutations):
         """Returns batched `tf.invert_permutation` for every row in `permutations`."""
         with tf.name_scope('batch_invert_permutation', values=[permutations]):
             unpacked = tf.unstack(permutations)
             inverses = [tf.invert_permutation(permutation) for permutation in unpacked]
             return tf.stack(inverses)
 
-    def batch_gather(self, values, indices):
+    def __batch_gather(self, values, indices):
         """Returns batched `tf.gather` for every row in the input."""
         with tf.name_scope('batch_gather', values=[values, indices]):
             unpacked = zip(tf.unstack(values), tf.unstack(indices))
             result = [tf.gather(value, index) for value, index in unpacked]
             return tf.stack(result)
 
-    def get_usage(self, write_weights, free_gates, read_weights, prev_usage):
+    def _get_usage(self, write_weights, free_gates, read_weights, prev_usage):
         """Calculates the new memory usage u_t.
 
         Memory that was written to in the previous time step will have its usage
@@ -218,13 +230,14 @@ class Allocation():
           tensor of shape `[batch_size, memory_size]` representing updated memory
           usage.
         """
-        # Calculation of usage is not differentiable with respect to write weights.
-        write_weight = tf.stop_gradient(write_weights)
-        usage = self.usage_after_write(prev_usage, write_weight)
-        usage = self.usage_after_read(usage, free_gates, read_weights)
-        return usage
+        with tf.name_scope("get_usage"):
+            # Calculation of usage is not differentiable with respect to write weights.
+            write_weight = tf.stop_gradient(write_weights)
+            usage = self.__usage_after_write(prev_usage, write_weight)
+            usage = self.__usage_after_read(usage, free_gates, read_weights)
+            return usage
 
-    def usage_after_write(self, prev_usage, write_weights):
+    def __usage_after_write(self, prev_usage, write_weights):
         """Calcualtes the new usage after writing to memory.
 
         Args:
@@ -242,7 +255,7 @@ class Allocation():
             usage_after_write = prev_usage + (1 - prev_usage) * write_weights
             return usage_after_write
 
-    def usage_after_read(self, prev_usage, free_gates, read_weights):
+    def __usage_after_read(self, prev_usage, free_gates, read_weights):
         """Calcualtes the new usage after reading and freeing from memory.
 
         Args:
@@ -295,7 +308,10 @@ class TemporalLinkage():
         self.num_writes = num_writes
         self.name = name
 
-    def build(self, write_weights, prev_state):
+    def __call__(self, write_weights, prev_state):
+        return self._build(write_weights, prev_state)
+
+    def _build(self, write_weights, prev_state):
         """Calculate the updated linkage state given the write weights.
 
         Args:
@@ -310,12 +326,14 @@ class TemporalLinkage():
           A `TemporalLinkageState` tuple `next_state`, which contains the updated
           link and precedence weights.
         """
-        link = self.link(prev_state.link, prev_state.precedence_weights,
-                          write_weights)
-        precedence_weights = self.precedence_weights(prev_state.precedence_weights,
-                                                      write_weights)
-        return TemporalLinkageState(
-            link=link, precedence_weights=precedence_weights)
+        with tf.name_scope('temporal_linkage'):
+            link = self.__link(prev_state.link,
+                               prev_state.precedence_weights,
+                               write_weights)
+            precedence_weights = self.__precedence_weights(prev_state.precedence_weights,
+                                                           write_weights)
+            return TemporalLinkageState(
+                link=link, precedence_weights=precedence_weights)
 
     def directional_read_weights(self, link, prev_read_weights, forward):
         """Calculates the forward or the backward read weights.
@@ -345,7 +363,7 @@ class TemporalLinkage():
             # Swap dimensions 1, 2 so order is [batch, reads, writes, memory]:
             return tf.transpose(result, perm=[0, 2, 1, 3])
 
-    def precedence_weights(self, prev_precedence_weights, write_weights):
+    def __precedence_weights(self, prev_precedence_weights, write_weights):
         """Calculates the new precedence weights given the current write weights.
 
         The precedence weights are the "aggregated write weights" for each write
@@ -369,7 +387,7 @@ class TemporalLinkage():
             write_sum = tf.reduce_sum(write_weights, 2, keep_dims=True)
             return (1 - write_sum) * prev_precedence_weights + write_weights
 
-    def link(self, prev_link, prev_precedence_weights, write_weights):
+    def __link(self, prev_link, prev_precedence_weights, write_weights):
         """Calculates the new link graphs.
 
         For each write head, the link is a directed graph (represented by a matrix
@@ -394,16 +412,16 @@ class TemporalLinkage():
         # print(prev_precedence_weights)
         # print(write_weights)
         with tf.name_scope('link'):
-          batch_size = prev_link.get_shape()[0].value
-          write_weights_i = tf.expand_dims(write_weights, 3)
-          write_weights_j = tf.expand_dims(write_weights, 2)
-          prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights, 2)
-          prev_link_scale = 1 - write_weights_i - write_weights_j
-          new_link = write_weights_i * prev_precedence_weights_j
-          link = prev_link_scale * prev_link + new_link
-          # Return the link with the diagonal set to zero, to remove self-looping
-          # edges.
-          return tf.matrix_set_diag(
+            batch_size = prev_link.get_shape()[0].value
+            write_weights_i = tf.expand_dims(write_weights, 3)
+            write_weights_j = tf.expand_dims(write_weights, 2)
+            prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights, 2)
+            prev_link_scale = 1 - write_weights_i - write_weights_j
+            new_link = write_weights_i * prev_precedence_weights_j
+            link = prev_link_scale * prev_link + new_link
+            # Return the link with the diagonal set to zero, to remove self-looping
+            # edges.
+            return tf.matrix_set_diag(
               link,
               tf.zeros(
                   [batch_size, self.num_writes, self.memory_size],
@@ -426,22 +444,26 @@ if __name__ == "__main__":
     # test class CosineWeights
     # cosineWeights = CosineWeights(num_heads=num_writes, word_size=word_size)
 
-    ###############################################
+    ##############################################
     # test CosineWeights.build
+
     # memory = tf.constant(np.random.rand(batch_size, memory_size, word_size))
     # keys = tf.constant(np.random.rand(batch_size, num_writes, word_size))
     # strengths = tf.constant(np.random.rand(batch_size, num_writes) + np.ones(shape=[batch_size, num_writes]))
-    # consine_Weights = cosineWeights.build(memory=memory,
+    # consine_Weights = cosineWeights(
+    #                     memory=memory,
     #                     keys=keys,
     #                     strengths=strengths)
     # with tf.Session() as sess:
+    #     writer = tf.summary.FileWriter("logs", sess.graph, filename_suffix=".consine_weights")
     #     consine_Weights = sess.run(consine_Weights)
     #     print(consine_Weights)
 
     ##############################################
     ##############################################
     # test class Allocation
-    allocation = Allocation(memory_size=memory_size)
+
+    # allocation = Allocation(memory_size=memory_size)
 
     ################################################
     # test Allocation.get_usage
@@ -455,6 +477,7 @@ if __name__ == "__main__":
     #                      read_weights=read_weights,
     #                      prev_usage=prev_usage)
     # with tf.Session() as sess:
+    #     writer = tf.summary.FileWriter("logs", sess.graph, filename_suffix=".allocation")
     #     usage = sess.run(usage)
     #     print(usage)
 
@@ -483,6 +506,7 @@ if __name__ == "__main__":
     # )
     #
     # with tf.Session() as sess:
+    #     writer = tf.summary.FileWriter("logs", sess.graph, filename_suffix=".allocation")
     #     allocation_weights = sess.run(allocation_weights)
     #     print(allocation_weights)
 
@@ -522,7 +546,7 @@ if __name__ == "__main__":
     #     print(link)
 
     #########################################################
-    # test TemporalLinkage.build
+    # test TemporalLinkage._build
 
     # prev_TemporalLinkageState = collections.namedtuple('prev_TemporalLinkageState',
     #                                               ('link', 'precedence_weights'))
@@ -530,10 +554,11 @@ if __name__ == "__main__":
     # prev_TemporalLinkageState.link = tf.constant(np.random.rand(batch_size, num_writes, memory_size, memory_size))
     # prev_TemporalLinkageState.precedence_weights = tf.constant(np.random.rand(batch_size, num_writes, memory_size))
     #
-    # temporalLinkageState = temporalLinkage.build(write_weights=write_weights,
+    # temporalLinkageState = temporalLinkage._build(write_weights=write_weights,
     #                                              prev_state=prev_TemporalLinkageState)
     #
     # with tf.Session() as sess:
+    #     writer = tf.summary.FileWriter("logs", sess.graph, filename_suffix=".temporalLinkage")
     #     temporalLinkageState = sess.run(temporalLinkageState)
     #     print(temporalLinkageState)
 
