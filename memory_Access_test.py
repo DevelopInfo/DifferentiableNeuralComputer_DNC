@@ -20,10 +20,10 @@ class MemoryAccessTest(tf.test.TestCase):
     def setUp(self):
         self.module = access.Memory_Access(MEMORY_SIZE, WORD_SIZE, NUM_READS,
                                           NUM_WRITES)
-        self.initial_state = self.module.initial_state(batch_size=BATCH_SIZE,dtype=tf.float32)
+        self.initial_state = self.module.initial_state(batch_size=BATCH_SIZE)
 
     def testValidReadMode(self):
-        inputs = self.module.parse_input(
+        inputs = self.module._parse_input(
             tf.random_normal([BATCH_SIZE, INPUT_SIZE]))
         init = tf.global_variables_initializer()
 
@@ -59,7 +59,7 @@ class MemoryAccessTest(tf.test.TestCase):
             'write_strength': tf.constant(write_content_strengths)
         }
 
-        weights = self.module.write_weights(inputs,
+        weights = self.module._write_weights(inputs,
                                              tf.constant(memory),
                                              tf.constant(usage))
 
@@ -96,7 +96,7 @@ class MemoryAccessTest(tf.test.TestCase):
             'read_strengths': read_content_strengths,
             'read_modes': tf.constant(read_mode),
         }
-        read_weights = self.module.read_weights(inputs, memory, prev_read_weights,
+        read_weights = self.module._read_weights(inputs, memory, prev_read_weights,
                                                  link)
         with self.test_session():
             read_weights = read_weights.eval()
@@ -106,8 +106,8 @@ class MemoryAccessTest(tf.test.TestCase):
             read_weights[0, 0, :], np.eye(MEMORY_SIZE)[3], atol=1e-3)
 
     def testGradients(self):
-        inputs = tf.constant(np.random.randn(BATCH_SIZE, INPUT_SIZE), tf.float32)
-        output, _ = self.module.build(inputs, self.initial_state)
+        inputs = tf.Variable(np.random.randn(BATCH_SIZE, INPUT_SIZE), tf.float64)
+        output, _ = self.module(inputs, self.initial_state)
         loss = tf.reduce_sum(output)
 
         tensors_to_check = [
@@ -120,8 +120,13 @@ class MemoryAccessTest(tf.test.TestCase):
         with self.test_session() as sess:
             sess.run(tf.global_variables_initializer())
             loss = sess.run(loss)
+            output = sess.run(output)
             print(loss)
-            err = tf.test.compute_gradient_error(tensors_to_check, shapes, loss, [1])
+            print(output)
+            err = tf.test.compute_gradient_error(x=tensors_to_check,
+                                                 x_shape=shapes,
+                                                 y=loss,
+                                                 y_shape=[1])
 
             self.assertLess(err, 0.1)
 

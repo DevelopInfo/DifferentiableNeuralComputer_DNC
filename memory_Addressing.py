@@ -232,8 +232,8 @@ class Allocation():
         """
         with tf.name_scope("get_usage"):
             # Calculation of usage is not differentiable with respect to write weights.
-            write_weight = tf.stop_gradient(write_weights)
-            usage = self.__usage_after_write(prev_usage, write_weight)
+            write_weights = tf.stop_gradient(write_weights)
+            usage = self.__usage_after_write(prev_usage, write_weights)
             usage = self.__usage_after_read(usage, free_gates, read_weights)
             return usage
 
@@ -327,10 +327,10 @@ class TemporalLinkage():
           link and precedence weights.
         """
         with tf.name_scope('temporal_linkage'):
-            link = self.__link(prev_state.link,
+            link = self._link(prev_state.link,
                                prev_state.precedence_weights,
                                write_weights)
-            precedence_weights = self.__precedence_weights(prev_state.precedence_weights,
+            precedence_weights = self._precedence_weights(prev_state.precedence_weights,
                                                            write_weights)
             return TemporalLinkageState(
                 link=link, precedence_weights=precedence_weights)
@@ -363,7 +363,7 @@ class TemporalLinkage():
             # Swap dimensions 1, 2 so order is [batch, reads, writes, memory]:
             return tf.transpose(result, perm=[0, 2, 1, 3])
 
-    def __precedence_weights(self, prev_precedence_weights, write_weights):
+    def _precedence_weights(self, prev_precedence_weights, write_weights):
         """Calculates the new precedence weights given the current write weights.
 
         The precedence weights are the "aggregated write weights" for each write
@@ -387,7 +387,7 @@ class TemporalLinkage():
             write_sum = tf.reduce_sum(write_weights, 2, keep_dims=True)
             return (1 - write_sum) * prev_precedence_weights + write_weights
 
-    def __link(self, prev_link, prev_precedence_weights, write_weights):
+    def _link(self, prev_link, prev_precedence_weights, write_weights):
         """Calculates the new link graphs.
 
         For each write head, the link is a directed graph (represented by a matrix

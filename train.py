@@ -77,8 +77,9 @@ def run_model(input_sequence, output_size):
     controller_config = {
       "num_units": FLAGS.hidden_size,
     }
+    clip_value = FLAGS.clip_value
 
-    dnc_core = dnc.DNC(access_config, controller_config, output_size)
+    dnc_core = dnc.DNC(access_config, controller_config, output_size, clip_value)
     initial_state = dnc_core.initial_state(batch_size=FLAGS.batch_size,
                                            dtype=tf.float32)
     output_sequence, _ = dynamic_dnc(
@@ -104,8 +105,8 @@ def dynamic_dnc(cell, inputs, initial_state, time_major=True):
     access_state = initial_state
     outputs = []
     for t in range(time):
-        output, access_state = cell.build(inputs=tf.reduce_sum(input_tensor=inputs[1, None],axis=0),
-                                          prev_state=access_state)
+        output, access_state = cell(inputs=tf.reduce_sum(input_tensor=inputs[1, None],axis=0),
+                                    prev_state=access_state)
         outputs.append(output)
     outputs = tf.stack(outputs, axis=0)
     return outputs, (output, access_state)

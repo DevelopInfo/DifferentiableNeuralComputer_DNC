@@ -24,6 +24,7 @@ class DNC():
                  access_config, # this is a tuple
                  controller_config, # this is a tuple
                  output_size,
+                 clip_value=None,
                  name='dnc'):
         """Initializes the DNC core.
 
@@ -43,8 +44,12 @@ class DNC():
         self.controller = tf.nn.rnn_cell.BasicLSTMCell(**controller_config)
         self.access = memory_Access.Memory_Access(**access_config)
         self.output_size = output_size
+        self.clip_value = clip_value or 0
 
-    def build(self, inputs, prev_state):
+    def __call__(self, inputs, prev_state):
+        return self._build(inputs, prev_state)
+
+    def _build(self, inputs, prev_state):
         """Connects the DNC core into the graph.
 
         Args:
@@ -60,45 +65,58 @@ class DNC():
           is a `DNCState` tuple containing the fields `access_output`,
           `access_state`, and `controller_state`.
         """
-        prev_access_output = prev_state.access_output
-        prev_access_state = prev_state.access_state
-        prev_controller_state = prev_state.controller_state
+        with tf.name_scope('dnc'):
+            prev_access_output = prev_state.access_output
+            prev_access_state = prev_state.access_state
+            prev_controller_state = prev_state.controller_state
 
-        batch_flatten = tf.layers.Flatten()
-        controller_input = tf.concat(
-            [batch_flatten(inputs), batch_flatten(prev_access_output)], 1)
+            batch_flatten = tf.layers.Flatten()
+            controller_input = tf.concat(
+                [batch_flatten(inputs), batch_flatten(prev_access_output)], 1)
 
-        controller_output, controller_state = self.controller(
-            controller_input, prev_controller_state)
+            controller_output, controller_state = self.controller(
+                controller_input, prev_controller_state)
 
-        access_output, access_state = self.access.build(
-            controller_output, prev_access_state)
+            # clip
+            controller_output = self.__clip_if_enabled(controller_output)
+            controller_state = tf.contrib.framework.nest.map_structure(
+                self.__clip_if_enabled, controller_state)
 
-        output = tf.concat([controller_output, batch_flatten(access_output)], 1)
-        output = self.linear(output)
+            access_output, access_state = self.access(
+                controller_output, prev_access_state)
 
-        return output, DNCState(
-            access_output=access_output,
-            access_state=access_state,
-            controller_state=controller_state)
+            output = tf.concat([controller_output, batch_flatten(access_output)], 1)
+            output = self.__linear(output)
+            output = self.__clip_if_enabled(output)
 
-    def linear(self, input):
+            return output, DNCState(
+                access_output=access_output,
+                access_state=access_state,
+                controller_state=controller_state)
+
+    def __clip_if_enabled(self, x):
+        if self.clip_value > 0:
+            return tf.clip_by_value(x, -self.clip_value, self.clip_value)
+        else:
+            return x
+
+    def __linear(self, input, dtype=tf.float32):
         input = tf.expand_dims(input=input,
                                axis=1)
         weights = tf.Variable(tf.random_normal(shape=[input.get_shape().as_list()[0],
                                                 input.get_shape().as_list()[2],
                                                 self.output_size],
-                                               dtype=tf.float32))
+                                               dtype=dtype))
         input = tf.matmul(input, weights)
         input = tf.reduce_sum(input_tensor=input,
                               axis=1)
         return input
 
-    def initial_state(self, batch_size, dtype=tf.float64):
+    def initial_state(self, batch_size, dtype=tf.float32):
         return DNCState(
             controller_state=self.controller.zero_state(batch_size,dtype),
-            access_state=self.access.initial_state(batch_size, dtype),
-            access_output=self.access.initial_output(batch_size, dtype)
+            access_state=self.access.initial_state(batch_size),
+            access_output=self.access.initial_output(batch_size)
         )
 
 if __name__ == "__main__":
@@ -122,9 +140,9 @@ if __name__ == "__main__":
 
     #########################################
     # test DNC.build
-    inputs = tf.constant(np.random.rand(batch_size, 1, 5))
+    inputs = tf.constant(np.random.rand(batch_size, 1, 5).astype(np.float32))
     prev_state = dnc.initial_state(batch_size=batch_size)
-    output, dnc_state = dnc.build(inputs=inputs, prev_state=prev_state)
+    output, dnc_state = dnc(inputs=inputs, prev_state=prev_state)
 
     with tf.Session() as sess:
         writer = tf.summary.FileWriter("logs/", sess.graph)

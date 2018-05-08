@@ -39,8 +39,10 @@ class Memory_Access():
             num_writes=num_writes
         )
 
+    def __call__(self, inputs, prev_access_state):
+        return self._build(inputs, prev_access_state)
 
-    def build(self, inputs, prev_access_state):
+    def _build(self, inputs, prev_access_state):
         """
         Args:
           inputs: tensor of shape = [batch_size, input_size]. This is used to
@@ -52,182 +54,184 @@ class Memory_Access():
           [batch_size, num_reads, word_size], and `next_state` is the new
           `AccessState` named tuple at the current time t.
         """
+        with tf.name_scope("memory_access"):
+            inputs = self._parse_input(controller_input=inputs)
 
-        inputs = self.parse_input(controller_input=inputs)
+            # Update usage using inputs['free_gates'] and previous read & write weights.
+            usage = self.allocation(
+                write_weights=prev_access_state.write_weights,
+                free_gates=inputs['free_gates'],
+                read_weights=prev_access_state.read_weights,
+                prev_usage=prev_access_state.usage)
 
-        # Update usage using inputs['free_gate'] and previous read & write weights.
-        usage = self.allocation.get_usage(
-            write_weights=prev_access_state.write_weights,
-            free_gates=inputs['free_gates'],
-            read_weights=prev_access_state.read_weights,
-            prev_usage=prev_access_state.usage)
+            # write to memory
+            write_weights = self._write_weights(
+                inputs=inputs,
+                memory=prev_access_state.memory,
+                usage=usage
+            )
+            memory = self._erase_and_write(
+                memory=prev_access_state.memory,
+                address=write_weights,
+                reset_weights=inputs['erase_vector'],
+                values=inputs['write_vector']
+            )
+            linkage_state = self.linkage(
+                write_weights=write_weights,
+                prev_state=prev_access_state.linkage
+            )
 
-        # write to memory
-        write_weights = self.write_weights(
-            inputs=inputs,
-            memory=prev_access_state.memory,
-            usage=usage
-        )
-        memory = self.erase_and_write(
-            memory=prev_access_state.memory,
-            address=write_weights,
-            reset_weights=inputs['erase_vector'],
-            values=inputs['write_vector']
-        )
-        linkage_state = self.linkage.build(
-            write_weights=write_weights,
-            prev_state=prev_access_state.linkage
-        )
+            # read from memory
+            read_weights = self._read_weights(
+                inputs=inputs,
+                memory=memory,
+                prev_read_weights=prev_access_state.read_weights,
+                link=linkage_state.link
+            )
+            # read_words.shape = [batch_size, num_reads, word_size]
+            read_words = tf.matmul(read_weights, memory)
 
-        # read from memory
-        read_weights = self.read_weights(
-            inputs=inputs,
-            memory=memory,
-            prev_read_weights=prev_access_state.read_weights,
-            link=linkage_state.link
-        )
-        # read_words.shape = [batch_size, num_reads, word_size]
-        read_words = tf.matmul(read_weights, memory)
+            return read_words, AccessState(
+                memory=memory,
+                read_weights=read_weights,
+                write_weights=write_weights,
+                linkage=linkage_state,
+                usage=usage
+            )
 
-        return read_words, AccessState(
-            memory=memory,
-            read_weights=read_weights,
-            write_weights=write_weights,
-            linkage=linkage_state,
-            usage=usage
-        )
-
-    def parse_input(self, controller_input):
+    def _parse_input(self, controller_input):
         """parse the controller_input
         Args:
-            controller_input: tensor of shape = [batch_size, input_size].
+            controller_input: tensor of shape = [batch_size, input_size] and dtype = tf.float64
         Returns:
             A tuple = (read_keys, read_strengths, write_key, write_strength,
             erase_vector, write_vector, free_gates, allocation_gate,
             write_gate, read_modes).
         """
-        # expand dimension
-        inputs = tf.expand_dims(input=controller_input,
-                                axis=1)
-        # linear transformation
-        inputs = tf.matmul(inputs,
-                           tf.Variable(tf.random_normal(shape=[inputs.get_shape().as_list()[0],
-                                                               inputs.get_shape().as_list()[2],
-                                                               self.word_size * self.num_reads + 3 * self.word_size + 5 * self.num_reads + 3],
-                                                        dtype=tf.float32)
-                                       ))
-        # decrease dimension
-        controller_input = tf.reduce_sum(input_tensor=inputs,
-                               axis=1)
+        with tf.name_scope("parse_input"):
+            # expand dimension
+            inputs = tf.expand_dims(input=controller_input,
+                                    axis=1)
+            # linear transformation
+            input_weight = tf.Variable(
+                tf.random_normal(shape=[inputs.get_shape().as_list()[0],
+                                        inputs.get_shape().as_list()[2],
+                                        self.word_size * self.num_reads + 3 * self.word_size + 5 * self.num_reads + 3],
+                                 dtype=tf.float32))
+            inputs = tf.matmul(inputs,input_weight)
+            # decrease dimension
+            controller_input = tf.reduce_sum(input_tensor=inputs,
+                                   axis=1)
 
 
-        def oneplus(x):
-            return 1 + tf.log( 1 + tf.exp(x))
+            def oneplus(x):
+                with tf.name_scope('oneplus'):
+                    return 1 + tf.log( 1 + tf.exp(x))
 
-        batch_size = controller_input.shape[0]
+            batch_size = controller_input.shape[0]
 
-        # read_keys.shape = (batch_size, num_reads, word_size)
-        read_keys = controller_input[:,
-                    0:self.num_reads*self.word_size]
-        read_keys = tf.reshape(
-            tensor=read_keys,
-            shape=(batch_size, self.num_reads, self.word_size))
+            # read_keys.shape = (batch_size, num_reads, word_size)
+            read_keys = controller_input[:,
+                        0:self.num_reads*self.word_size]
+            read_keys = tf.reshape(
+                tensor=read_keys,
+                shape=(batch_size, self.num_reads, self.word_size))
 
-        # read_strength.shape = (batch_size, num_reads)
-        read_strengths = controller_input[:,
-                         self.num_reads*self.word_size :
-                         self.num_reads*self.word_size+self.num_reads]
-        read_strengths = oneplus(read_strengths)
+            # read_strength.shape = (batch_size, num_reads)
+            read_strengths = controller_input[:,
+                             self.num_reads*self.word_size :
+                             self.num_reads*self.word_size+self.num_reads]
+            read_strengths = oneplus(read_strengths)
 
-        # write_key.shape = (batch_size, num_writes, word_size)
-        write_key = controller_input[:,
-                    self.num_reads*self.word_size+self.num_reads :
-                    self.num_reads*self.word_size+self.num_reads+self.word_size]
-        write_key = tf.reshape(
-            tensor=write_key,
-            shape=(batch_size, self.num_writes, self.word_size)
-        )
+            # write_key.shape = (batch_size, num_writes, word_size)
+            write_key = controller_input[:,
+                        self.num_reads*self.word_size+self.num_reads :
+                        self.num_reads*self.word_size+self.num_reads+self.word_size]
+            write_key = tf.reshape(
+                tensor=write_key,
+                shape=(batch_size, self.num_writes, self.word_size)
+            )
 
-        # write_strength.shape = (batch_size, num_writes)
-        write_strength = controller_input[:,
-                         self.num_reads*self.word_size+self.num_reads+self.word_size :
-                         self.num_reads*self.word_size+self.num_reads+self.word_size + 1]
-        write_strength = oneplus(write_strength)
+            # write_strength.shape = (batch_size, num_writes)
+            write_strength = controller_input[:,
+                             self.num_reads*self.word_size+self.num_reads+self.word_size :
+                             self.num_reads*self.word_size+self.num_reads+self.word_size + 1]
+            write_strength = oneplus(write_strength)
 
-        # erase_vector.shape = (batch_size, num_writes, word_size)
-        erase_vector =  controller_input[:,
-                        self.num_reads * self.word_size + self.num_reads + self.word_size + 1 :
-                        self.num_reads * self.word_size + self.num_reads + 2 * self.word_size + 1]
-        erase_vector = tf.sigmoid(erase_vector)
-        erase_vector = tf.reshape(
-            tensor=erase_vector,
-            shape=(batch_size, self.num_writes, self.word_size)
-        )
+            # erase_vector.shape = (batch_size, num_writes, word_size)
+            erase_vector =  controller_input[:,
+                            self.num_reads * self.word_size + self.num_reads + self.word_size + 1 :
+                            self.num_reads * self.word_size + self.num_reads + 2 * self.word_size + 1]
+            erase_vector = tf.sigmoid(erase_vector)
+            erase_vector = tf.reshape(
+                tensor=erase_vector,
+                shape=(batch_size, self.num_writes, self.word_size)
+            )
 
-        # write_vector.shape = (batch_size, num_writes, word_size)
-        write_vector = controller_input[:,
-                       self.num_reads * self.word_size + self.num_reads + 2 * self.word_size + 1:
-                       self.num_reads * self.word_size + self.num_reads + 3 * self.word_size + 1]
-        write_vector = tf.reshape(
-            tensor=write_vector,
-            shape=(batch_size, self.num_writes, self.word_size)
-        )
+            # write_vector.shape = (batch_size, num_writes, word_size)
+            write_vector = controller_input[:,
+                           self.num_reads * self.word_size + self.num_reads + 2 * self.word_size + 1:
+                           self.num_reads * self.word_size + self.num_reads + 3 * self.word_size + 1]
+            write_vector = tf.reshape(
+                tensor=write_vector,
+                shape=(batch_size, self.num_writes, self.word_size)
+            )
 
-        # free_gates.shape = (batch_size, num_reads)
-        free_gates = controller_input[:,
-                     self.num_reads * self.word_size + self.num_reads + 3 * self.word_size + 1:
-                     self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 1]
-        free_gates = tf.sigmoid(free_gates)
+            # free_gates.shape = (batch_size, num_reads)
+            free_gates = controller_input[:,
+                         self.num_reads * self.word_size + self.num_reads + 3 * self.word_size + 1:
+                         self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 1]
+            free_gates = tf.sigmoid(free_gates)
 
-        # allocation_gate.shape = (batch_size, num_writes)
-        allocation_gate = controller_input[:,
-                          self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 1:
-                          self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 2]
-        allocation_gate = tf.sigmoid(allocation_gate)
+            # allocation_gate.shape = (batch_size, num_writes)
+            allocation_gate = controller_input[:,
+                              self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 1:
+                              self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 2]
+            allocation_gate = tf.sigmoid(allocation_gate)
 
-        # write_gate.shape = (batch_size, num_writes)
-        write_gate = controller_input[:,
-                     self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 2:
-                     self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 3]
-        write_gate = tf.sigmoid(write_gate)
+            # write_gate.shape = (batch_size, num_writes)
+            write_gate = controller_input[:,
+                         self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 2:
+                         self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 3]
+            write_gate = tf.sigmoid(write_gate)
 
-        # read_modes.shape = (batch_size, num_reads, 3)
-        read_modes = controller_input[:,
-                     self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 3:
-                     self.num_reads * self.word_size + 5 * self.num_reads + 3 * self.word_size + 4]
+            # read_modes.shape = (batch_size, num_reads, 3)
+            read_modes = controller_input[:,
+                         self.num_reads * self.word_size + 2 * self.num_reads + 3 * self.word_size + 3:
+                         self.num_reads * self.word_size + 5 * self.num_reads + 3 * self.word_size + 4]
 
-        read_modes = tf.reshape(
-            tensor=read_modes,
-            shape=(batch_size, self.num_reads, 3)
-        )
-        read_modes = tf.nn.softmax(logits=read_modes, axis=2)
+            read_modes = tf.reshape(
+                tensor=read_modes,
+                shape=(batch_size, self.num_reads, 3)
+            )
+            read_modes = tf.nn.softmax(logits=read_modes, axis=2)
 
-        result = {
-            # [batch_size, num_reads, word_size]
-            'read_keys': read_keys,
-            # [batch_size, num_reads]
-            'read_strengths': read_strengths,
-            # [batch_size, num_writes, word_size]
-            'write_key': write_key,
-            # [batch_size, num_writes]
-            'write_strength': write_strength,
-            # [batch_size, num_writes, word_size]
-            'write_vector': write_vector,
-            # [batch_size, num_writes, word_size]
-            'erase_vector': erase_vector,
-            # [batch_size, num_reads]
-            'free_gates': free_gates,
-            # [batch_size, num_wirtes]
-            'allocation_gate': allocation_gate,
-            # [batch_size, num_writes]
-            'write_gate': write_gate,
-            # [batch_size, num_reads, 3]
-            'read_modes': read_modes,
-        }
+            result = {
+                # [batch_size, num_reads, word_size]
+                'read_keys': read_keys,
+                # [batch_size, num_reads]
+                'read_strengths': read_strengths,
+                # [batch_size, num_writes, word_size]
+                'write_key': write_key,
+                # [batch_size, num_writes]
+                'write_strength': write_strength,
+                # [batch_size, num_writes, word_size]
+                'write_vector': write_vector,
+                # [batch_size, num_writes, word_size]
+                'erase_vector': erase_vector,
+                # [batch_size, num_reads]
+                'free_gates': free_gates,
+                # [batch_size, num_wirtes]
+                'allocation_gate': allocation_gate,
+                # [batch_size, num_writes]
+                'write_gate': write_gate,
+                # [batch_size, num_reads, 3]
+                'read_modes': read_modes,
+            }
 
-        return result
+            return result
 
-    def erase_and_write(self, memory, address, reset_weights, values):
+    def _erase_and_write(self, memory, address, reset_weights, values):
         """Module to erase and write in the external memory.
 
           Erase operation:
@@ -247,20 +251,21 @@ class Memory_Access():
           Returns:
             3-D tensor of shape `[batch_size, num_writes, word_size]`.
           """
-        with tf.name_scope('erase_memory', values=[memory, address, reset_weights]):
-            expand_address = tf.expand_dims(address, 3)
-            reset_weights = tf.expand_dims(reset_weights, 2)
-            weighted_resets = expand_address * reset_weights
-            reset_gate = tf.reduce_prod(1 - weighted_resets, [1])
-            memory *= reset_gate
+        with tf.name_scope('erase_and_write'):
+            with tf.name_scope('erase_memory', values=[memory, address, reset_weights]):
+                expand_address = tf.expand_dims(address, 3)
+                reset_weights = tf.expand_dims(reset_weights, 2)
+                weighted_resets = expand_address * reset_weights
+                reset_gate = tf.reduce_prod(1 - weighted_resets, [1])
+                memory *= reset_gate
 
-        with tf.name_scope('additive_write', values=[memory, address, values]):
-            add_matrix = tf.matmul(address, values, adjoint_a=True)
-            memory += add_matrix
+            with tf.name_scope('additive_write', values=[memory, address, values]):
+                add_matrix = tf.matmul(address, values, adjoint_a=True)
+                memory += add_matrix
 
-        return memory
+            return memory
 
-    def write_weights(self, inputs, memory, usage):
+    def _write_weights(self, inputs, memory, usage):
         """Calculates the memory locations to write to.
 
         This uses a combination of content-based lookup and finding an unused
@@ -281,7 +286,7 @@ class Memory_Access():
         """
         with tf.name_scope('write_weights', values=[inputs, memory, usage]):
             # c_t^{w, i} - The content-based weights for each write head.
-            write_content_weights = self.write_content_weights_mod.build(
+            write_content_weights = self.write_content_weights_mod(
                 memory=memory,
                 keys=inputs['write_key'],
                 strengths=inputs['write_strength']
@@ -302,7 +307,7 @@ class Memory_Access():
             return write_gate * (allocation_gate * write_allocation_weights +
                                  (1 - allocation_gate) * write_content_weights)
 
-    def read_weights(self, inputs, memory, prev_read_weights, link):
+    def _read_weights(self, inputs, memory, prev_read_weights, link):
         """Calculates read weights for each read head.
 
         The read weights are a combination of following the link graphs in the
@@ -327,7 +332,7 @@ class Memory_Access():
         with tf.name_scope(
                 'read_weights', values=[inputs, memory, prev_read_weights, link]):
             # c_t^{r, i} - The content weightings for each read head.
-            content_weights = self.read_content_weights_mod.build(
+            content_weights = self.read_content_weights_mod(
                 memory, inputs['read_keys'], inputs['read_strengths'])
 
             # Calculates f_t^i and b_t^i.
@@ -352,33 +357,49 @@ class Memory_Access():
 
             return read_weights
 
-    def initial_state(self, batch_size, dtype=tf.float64):
-        AccessState.memory = tf.constant(value=10 * (np.random.rand(batch_size, self.memory_size, self.word_size) - 0.5),
+    def initial_state(self, batch_size, dtype=tf.float32):
+        with tf.name_scope('initial_state'):
+            initial_memory = 10 * (np.random.rand(batch_size,
+                                                  self.memory_size,
+                                                  self.word_size).astype(np.float32) - 0.5)
+            AccessState.memory = tf.constant(initial_memory)
+
+            initial_read_weights = np.random.rand(batch_size,
+                                                  self.num_reads,
+                                                  self.memory_size).astype(np.float32)
+            initial_read_weights /= initial_read_weights.sum(axis=2, keepdims=True) + 1
+            AccessState.read_weights = tf.constant(initial_read_weights)
+
+            initial_write_weights = np.random.rand(batch_size,
+                                                   self.num_writes,
+                                                   self.memory_size).astype(np.float32)
+            initial_write_weights /= initial_write_weights.sum(axis=2, keepdims=True) + 1
+            AccessState.write_weights = tf.constant(initial_write_weights)
+
+            initial_link = np.random.rand(batch_size,
+                                          self.num_writes,
+                                          self.memory_size,
+                                          self.memory_size).astype(np.float32)
+            # Row and column sums should be at most 1:
+            initial_link /= np.maximum(initial_link.sum(2, keepdims=True), 1)
+            initial_link /= np.maximum(initial_link.sum(3, keepdims=True), 1)
+            memory_Addressing.TemporalLinkageState.link = tf.constant(initial_link)
+
+            initial_precedence_weights = np.random.rand(batch_size,
+                                                        self.num_writes,
+                                                        self.memory_size).astype(np.float32)
+            initial_precedence_weights /= initial_precedence_weights.sum(axis=2, keepdims=True) + 1
+            memory_Addressing.TemporalLinkageState.precedence_weights = tf.constant(initial_precedence_weights)
+
+            AccessState.linkage = memory_Addressing.TemporalLinkageState
+
+            AccessState.usage = tf.zeros(shape=(batch_size, self.memory_size),
                                          dtype=dtype)
 
-        AccessState.read_weights = tf.constant(value=np.random.rand(batch_size, self.num_reads, self.memory_size),
-                                         dtype=dtype)
+            return AccessState
 
-        AccessState.write_weights = tf.constant(value=np.random.rand(batch_size, self.num_writes, self.memory_size),
-                                         dtype=dtype)
-
-        memory_Addressing.TemporalLinkageState.link = tf.constant(
-            value=np.random.rand(batch_size, self.num_writes, self.memory_size, self.memory_size),
-                                         dtype=dtype)
-        memory_Addressing.TemporalLinkageState.precedence_weights = tf.constant(
-            value=np.random.rand(batch_size, self.num_writes, self.memory_size),
-                                         dtype=dtype)
-        AccessState.linkage = memory_Addressing.TemporalLinkageState
-
-        AccessState.usage = tf.constant(value=np.random.rand(batch_size, self.memory_size),
-                                         dtype=dtype)
-
-        return AccessState
-
-    def initial_output(self, batch_size, dtype=tf.float64):
-        return tf.constant(value=np.random.rand(batch_size, self.num_reads, self.word_size),
-                           dtype=dtype)
-
+    def initial_output(self, batch_size, dtype=tf.float32):
+        return tf.zeros(shape=(batch_size, self.num_reads * self.word_size), dtype=dtype)
 # test
 
 if __name__ == "__main__":
@@ -413,24 +434,24 @@ if __name__ == "__main__":
     ####################################################
     # test Memory_Access.write_weights
 
-    controller_input = tf.random_normal(
-            shape=[batch_size,
-            word_size*num_reads + 3*word_size + 5*num_reads + 3],
-            dtype=tf.float64)
-
-    input = memoryAccess.parse_input(controller_input)
-
-    memory = tf.constant(np.random.rand(batch_size, memory_size, word_size))
-
-    usage = tf.constant(np.random.rand(batch_size, memory_size))
-    write_weights = memoryAccess.write_weights(inputs=input,
-                                               memory=memory,
-                                               usage=usage)
-
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        write_weights = sess.run(write_weights)
-        print(write_weights)
+    # controller_input = tf.random_normal(
+    #         shape=[batch_size,
+    #         word_size*num_reads + 3*word_size + 5*num_reads + 3],
+    #         dtype=tf.float64)
+    #
+    # input = memoryAccess.parse_input(controller_input)
+    #
+    # memory = tf.constant(np.random.rand(batch_size, memory_size, word_size))
+    #
+    # usage = tf.constant(np.random.rand(batch_size, memory_size))
+    # write_weights = memoryAccess.write_weights(inputs=input,
+    #                                            memory=memory,
+    #                                            usage=usage)
+    #
+    # with tf.Session() as sess:
+    #     sess.run(tf.global_variables_initializer())
+    #     write_weights = sess.run(write_weights)
+    #     print(write_weights)
 
     ######################################################
     # test Memory_Access.read_weights
@@ -454,18 +475,20 @@ if __name__ == "__main__":
     #     print(read_weights)
 
     ########################################################
-    # test Memory_Access.build
+    # test Memory_Access._build
 
-    # controller_input = tf.constant(
-    #     np.random.rand(batch_size, word_size * num_reads + 3 * word_size + 5 * num_reads + 3))
-    #
-    # AccessState = memoryAccess.initial_state(batch_size=batch_size)
-    #
-    # read_words, access_state = memoryAccess.build(inputs=controller_input,
-    #                                               prev_access_state=AccessState)
-    #
-    # with tf.Session() as sess:
-    #     sess.run(tf.global_variables_initializer())
-    #     read_words, access_state = sess.run([read_words, access_state])
-    #     print("read_words: \n", read_words.shape)
-    #     print("access_state: \n", access_state)
+    controller_input = tf.constant(
+        np.random.rand(batch_size,
+                       word_size * num_reads + 3 * word_size + 5 * num_reads + 3).astype(np.float32))
+
+    AccessState = memoryAccess.initial_state(batch_size=batch_size)
+
+    read_words, access_state = memoryAccess(inputs=controller_input,
+                                            prev_access_state=AccessState)
+
+    with tf.Session() as sess:
+        writer = tf.summary.FileWriter("logs", sess.graph, filename_suffix='.memory_access')
+        sess.run(tf.global_variables_initializer())
+        read_words, access_state = sess.run([read_words, access_state])
+        # print("read_words: \n", read_words.shape)
+        # print("access_state: \n", access_state)
