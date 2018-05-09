@@ -106,7 +106,8 @@ class MemoryAccessTest(tf.test.TestCase):
             read_weights[0, 0, :], np.eye(MEMORY_SIZE)[3], atol=1e-3)
 
     def testGradients(self):
-        inputs = tf.Variable(np.random.randn(BATCH_SIZE, INPUT_SIZE), tf.float64)
+        print(self.initial_state)
+        inputs = tf.constant(np.random.randn(BATCH_SIZE, INPUT_SIZE), tf.float32)
         output, _ = self.module(inputs, self.initial_state)
         loss = tf.reduce_sum(output)
 
@@ -116,13 +117,15 @@ class MemoryAccessTest(tf.test.TestCase):
             self.initial_state.linkage.link
         ]
         shapes = [x.get_shape().as_list() for x in tensors_to_check]
-        print(shapes)
+        [dinputs, dmemory, dread_weights, dp, dl] = tf.gradients(loss, tensors_to_check)
+
         with self.test_session() as sess:
             sess.run(tf.global_variables_initializer())
-            loss = sess.run(loss)
-            output = sess.run(output)
-            print(loss)
-            print(output)
+            # loss = sess.run(loss)
+            # output = sess.run(output)
+            # print("output: \n", output)
+            # dinputs = sess.run(dinputs)
+            # print("dinputs: \n", dinputs)
             err = tf.test.compute_gradient_error(x=tensors_to_check,
                                                  x_shape=shapes,
                                                  y=loss,

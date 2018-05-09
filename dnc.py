@@ -86,7 +86,11 @@ class DNC():
                 controller_output, prev_access_state)
 
             output = tf.concat([controller_output, batch_flatten(access_output)], 1)
-            output = self.__linear(output)
+            output = tf.reduce_sum(
+                input_tensor=memory_Access._linear(name='dnc_linear',
+                                                   first_dim=self.output_size,
+                                                   inputs=output),
+                axis=2)
             output = self.__clip_if_enabled(output)
 
             return output, DNCState(
@@ -99,18 +103,6 @@ class DNC():
             return tf.clip_by_value(x, -self.clip_value, self.clip_value)
         else:
             return x
-
-    def __linear(self, input, dtype=tf.float32):
-        input = tf.expand_dims(input=input,
-                               axis=1)
-        weights = tf.Variable(tf.random_normal(shape=[input.get_shape().as_list()[0],
-                                                input.get_shape().as_list()[2],
-                                                self.output_size],
-                                               dtype=dtype))
-        input = tf.matmul(input, weights)
-        input = tf.reduce_sum(input_tensor=input,
-                              axis=1)
-        return input
 
     def initial_state(self, batch_size, dtype=tf.float32):
         return DNCState(
