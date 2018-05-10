@@ -85,6 +85,7 @@ def run_model(input_sequence, output_size):
     output_sequence, _ = dynamic_dnc(
       cell=dnc_core,
       inputs=input_sequence,
+      time_major=True,
       initial_state=initial_state)
 
     return output_sequence
@@ -105,6 +106,7 @@ def dynamic_dnc(cell, inputs, initial_state, time_major=True):
     access_state = initial_state
     outputs = []
     for t in range(time):
+        # 循环调用cell,会导致cell中的变量重新定义，导致梯度没法下降
         output, access_state = cell(inputs=tf.reduce_sum(input_tensor=inputs[1, None],axis=0),
                                     prev_state=access_state)
         outputs.append(output)
@@ -164,7 +166,7 @@ def train(num_training_iterations, report_interval):
     # Train.
     with tf.train.SingularMonitoredSession(
         hooks=hooks, checkpoint_dir=FLAGS.checkpoint_dir) as sess:
-
+        writer = tf.summary.FileWriter("logs", sess.graph)
         start_iteration = sess.run(global_step)
         total_loss = 0
 

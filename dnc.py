@@ -40,7 +40,8 @@ class DNC():
           TypeError: if direct_input_size is not None for any access module other
             than KeyValueMemory.
         """
-        self.name = name
+        self.name=name
+
         self.controller = tf.nn.rnn_cell.BasicLSTMCell(**controller_config)
         self.access = memory_Access.Memory_Access(**access_config)
         self.output_size = output_size
@@ -86,11 +87,9 @@ class DNC():
                 controller_output, prev_access_state)
 
             output = tf.concat([controller_output, batch_flatten(access_output)], 1)
-            output = tf.reduce_sum(
-                input_tensor=memory_Access._linear(name='dnc_linear',
-                                                   first_dim=self.output_size,
-                                                   inputs=output),
-                axis=2)
+            output = memory_Access.linear_transform(name='output_linear',
+                                                    inputs=output,
+                                                    outputs_size=self.output_size)
             output = self.__clip_if_enabled(output)
 
             return output, DNCState(
@@ -110,6 +109,7 @@ class DNC():
             access_state=self.access.initial_state(batch_size),
             access_output=self.access.initial_output(batch_size)
         )
+
 
 if __name__ == "__main__":
     """set parameters"""
@@ -142,3 +142,4 @@ if __name__ == "__main__":
         output, dnc_state = sess.run([output, dnc_state])
         print(output)
         print(dnc_state)
+

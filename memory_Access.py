@@ -4,32 +4,28 @@ import memory_Addressing
 import numpy as np
 
 
-def _linear(name, inputs, first_dim=1, second_dim=1, bias_enable=False, activation=None):
-    """Returns a linear transformation of `inputs`, followed by a reshape."""
-    output_size = first_dim * second_dim
-    # expand dimension
-    inputs = tf.expand_dims(input=inputs, axis=1)
+def linear_transform(name, inputs, outputs_size, bias_enable=False):
+    """
+        Args:
+            inputs: a tensor of shape `[batch_size, input_size]`
+        Returns:
+            returns a linear transformation of `inputs`, followed by a reshape.
+    """
 
-    # linear transformation
-    with tf.variable_scope(name+"_weightscope",reuse=tf.AUTO_REUSE):
-        weights = tf.get_variable(
-            name= name + "_weights",
-            shape=(inputs.get_shape().as_list()[0],
-                   inputs.get_shape().as_list()[2],
-                   output_size),
-            dtype=tf.float32)
-    linear = tf.matmul(inputs, weights)
+    with tf.variable_scope(name_or_scope=name,reuse=tf.AUTO_REUSE):
+        inputs_shape = tuple(inputs.get_shape().as_list())
 
-    if bias_enable:
-        bias = tf.get_variable(
-            name = name + "_bias",
-            shape=(inputs.get_shape().as_list()[0],1, output_size),
-            dtype=tf.float32)
-        inputs += bias
+        weight_shape = (inputs_shape[1], outputs_size)
+        weight = tf.get_variable(name=name+"_w", shape=weight_shape)
+        print(weight)
+        outputs = tf.matmul(inputs, weight)
 
-    if activation is not None:
-        linear = activation(linear)
-    return tf.reshape(linear, [-1, first_dim, second_dim])
+        if bias_enable:
+            bias_shape = (outputs_size,)
+            bias = tf.get_variable(name=name+"_b", shape=bias_shape)
+            outputs += bias
+
+        return outputs
 
 
 AccessState = collections.namedtuple('AccessState', (
@@ -138,68 +134,67 @@ class Memory_Access():
             write_gate, read_modes).
         """
         with tf.name_scope("parse_input"):
+            def _linear(first_dim, second_dim, name, activation=None):
+                """Returns a linear transformation of `inputs`, followed by a reshape."""
+                linear = linear_transform(name=name, inputs=controller_input, outputs_size=first_dim * second_dim)
+                if activation is not None:
+                    linear = activation(linear, name=name + '_activation')
+                return tf.reshape(linear, [-1, first_dim, second_dim])
 
             def oneplus(x):
                 with tf.name_scope('oneplus'):
                     return 1 + tf.log( 1 + tf.exp(x))
 
             # v_t^i - The vectors to write to memory, for each write head `i`.
-            write_vectors = _linear(name='write_vectors',
-                                    first_dim=self.num_writes,
-                                    second_dim=self.word_size,
-                                    inputs=controller_input)
+            write_vectors = _linear(self.num_writes, self.word_size, 'write_vectors')
 
             # e_t^i - Amount to erase the memory by before writing, for each write head.
-            erase_vectors = _linear(name='erase_vectors',
-                                    first_dim=self.num_writes,
-                                    second_dim=self.word_size,
-                                    inputs=controller_input,
-                                    activation=tf.sigmoid)
+            erase_vectors = _linear(self.num_writes, self.word_size, 'erase_vectors',
+                                    tf.sigmoid)
 
             # f_t^j - Amount that the memory at the locations read from at the previous
             # time step can be declared unused, for each read head `j`.
             free_gate = tf.sigmoid(
-                tf.reduce_sum(input_tensor=_linear(name='free_gate', first_dim=self.num_reads, inputs=controller_input),
-                              axis=2))
+                linear_transform(inputs=controller_input,
+                                 outputs_size=self.num_reads,
+                                 name='free_gate'))
 
             # g_t^{a, i} - Interpolation between writing to unallocated memory and
             # content-based lookup, for each write head `i`. Note: `a` is simply used to
             # identify this gate with allocation vs writing (as defined below).
             allocation_gate = tf.sigmoid(
-                tf.reduce_sum(
-                    input_tensor=_linear(name='allocation_gate', first_dim=self.num_writes, inputs=controller_input),
-                    axis=2))
+                linear_transform(name='allocation_gate',
+                                 inputs=controller_input,
+                                 outputs_size=self.num_writes))
 
             # g_t^{w, i} - Overall gating of write amount for each write head.
             write_gate = tf.sigmoid(
-                tf.reduce_sum(input_tensor=_linear(name='write_gate', first_dim=self.num_writes, inputs=controller_input),
-                              axis=2))
+                linear_transform(name='write_gate',
+                                 inputs=controller_input,
+                                 outputs_size=self.num_writes))
 
             # \pi_t^j - Mixing between "backwards" and "forwards" positions (for
             # each write head), and content-based lookup, for each read head.
             num_read_modes = 1 + 2 * self.num_writes
             read_mode = tf.nn.softmax(logits=_linear(name='read_mode',
                                                      first_dim=self.num_reads,
-                                                     second_dim=num_read_modes,
-                                                     inputs=controller_input),
+                                                     second_dim=num_read_modes),
                                       axis=-1)
 
             # Parameters for the (read / write) "weights by content matching" modules.
             write_keys = _linear(name='write_keys',
                                  first_dim=self.num_writes,
-                                 second_dim=self.word_size,
-                                 inputs=controller_input)
-            write_strengths = tf.reduce_sum(
-                input_tensor=_linear(name='write_strength', first_dim=self.num_writes, inputs=controller_input),
-                axis=2)
+                                 second_dim=self.word_size)
+            write_strengths = linear_transform(name='write_strength',
+                                               inputs=controller_input,
+                                               outputs_size=self.num_writes)
 
             read_keys = _linear(name='read_keys',
                                 first_dim=self.num_reads,
-                                second_dim=self.word_size,
-                                inputs=controller_input)
-            read_strengths = tf.reduce_sum(
-                input_tensor=_linear(name='read_strengths', first_dim=self.num_reads, inputs=controller_input),
-                axis=2)
+                                second_dim=self.word_size)
+            read_strengths = linear_transform(name='read_strength',
+                                              inputs=controller_input,
+                                              outputs_size=self.num_reads)
 
             result = {
                 # [batch_size, num_reads, word_size]
