@@ -1,134 +1,155 @@
+# Copyright 2017 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 """DNC Cores.
 
 These modules create a DNC core. They take input, pass parameters to the memory
 access module, and integrate the output of memory to form an output.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import collections
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
-import memory_Access
 
-DNCState = collections.namedtuple('DNCState',('access_output',
-                                              'access_state',
-                                              'controller_state'))
+import access
 
-class DNC():
-    """DNC core module.
+DNCState = collections.namedtuple('DNCState', ('access_output', 'access_state',
+                                               'controller_state'))
 
-      Contains controller and memory access module.
-      """
 
-    def __init__(self,
-                 access_config, # this is a tuple
-                 controller_config, # this is a tuple
-                 output_size,
-                 name='dnc'):
-        """Initializes the DNC core.
+class DNC(tf.nn.rnn_cell.RNNCell):
+  """DNC core module.
 
-        Args:
-          access_config: dictionary of access module configurations.
-          controller_config: dictionary of controller (LSTM) module configurations.
-          output_size: output dimension size of core.
-          clip_value: clips controller and core output values to between
-              `[-clip_value, clip_value]` if specified.
-          name: module name (default 'dnc').
+  Contains controller and memory access module.
+  """
 
-        Raises:
-          TypeError: if direct_input_size is not None for any access module other
-            than KeyValueMemory.
-        """
-        self.name = name
-        self.controller = tf.nn.rnn_cell.BasicLSTMCell(**controller_config)
-        self.access = memory_Access.Memory_Access(**access_config)
-        self.output_size = output_size
+  def __init__(self,
+               access_config,
+               controller_config,
+               output_size,
+               clip_value=None,
+               name='dnc'):
+    """Initializes the DNC core.
 
-    def build(self, inputs, prev_state):
-        """Connects the DNC core into the graph.
+    Args:
+      access_config: dictionary of access module configurations.
+      controller_config: dictionary of controller (LSTM) module configurations.
+      output_size: output dimension size of core.
+      clip_value: clips controller and core output values to between
+          `[-clip_value, clip_value]` if specified.
+      name: module name (default 'dnc').
 
-        Args:
-          inputs: Tensor input.
-          prev_state: A `DNCState` tuple containing the fields `access_output`,
-              `access_state` and `controller_state`. `access_state` is a 3-D Tensor
-              of shape `[batch_size, num_reads, word_size]` containing read words.
-              `access_state` is a tuple of the access module's state, and
-              `controller_state` is a tuple of controller module's state.
+    Raises:
+      TypeError: if direct_input_size is not None for any access module other
+        than KeyValueMemory.
+    """
+    super(DNC, self).__init__(name=name)
 
-        Returns:
-          A tuple `(output, next_state)` where `output` is a tensor and `next_state`
-          is a `DNCState` tuple containing the fields `access_output`,
-          `access_state`, and `controller_state`.
-        """
-        prev_access_output = prev_state.access_output
-        prev_access_state = prev_state.access_state
-        prev_controller_state = prev_state.controller_state
+    with tf.name_scope("controller_and_access"):
+      self._controller = tf.nn.rnn_cell.BasicLSTMCell(**controller_config)
+      self._access = access.MemoryAccess(**access_config)
 
-        batch_flatten = tf.layers.Flatten()
-        controller_input = tf.concat(
-            [batch_flatten(inputs), batch_flatten(prev_access_output)], 1)
+    self._access_output_size = np.prod(self._access.output_size.as_list())
+    self._output_size = output_size
+    self._clip_value = clip_value or 0
 
-        controller_output, controller_state = self.controller(
-            controller_input, prev_controller_state)
+    self._output_size = tf.TensorShape([output_size])
+    self._state_size = DNCState(
+        access_output=self._access_output_size,
+        access_state=self._access.state_size,
+        controller_state=self._controller.state_size)
 
-        access_output, access_state = self.access.build(
-            controller_output, prev_access_state)
+  def _clip_if_enabled(self, x):
+    if self._clip_value > 0:
+      return tf.clip_by_value(x, -self._clip_value, self._clip_value)
+    else:
+      return x
 
-        output = tf.concat([controller_output, batch_flatten(access_output)], 1)
-        output = self.linear(output)
+  def __call__(self, inputs, prev_state):
+      return self._build(inputs, prev_state)
 
-        return output, DNCState(
-            access_output=access_output,
-            access_state=access_state,
-            controller_state=controller_state)
+  def _build(self, inputs, prev_state):
+    """Connects the DNC core into the graph.
 
-    def linear(self, input):
-        input = tf.expand_dims(input=input,
-                               axis=1)
-        weights = tf.Variable(tf.random_normal(shape=[input.get_shape().as_list()[0],
-                                                input.get_shape().as_list()[2],
-                                                self.output_size],
-                                               dtype=tf.float32))
-        input = tf.matmul(input, weights)
-        input = tf.reduce_sum(input_tensor=input,
-                              axis=1)
-        return input
+    Args:
+      inputs: Tensor input.
+      prev_state: A `DNCState` tuple containing the fields `access_output`,
+          `access_state` and `controller_state`. `access_state` is a 3-D Tensor
+          of shape `[batch_size, num_reads, word_size]` containing read words.
+          `access_state` is a tuple of the access module's state, and
+          `controller_state` is a tuple of controller module's state.
 
-    def initial_state(self, batch_size, dtype=tf.float64):
-        return DNCState(
-            controller_state=self.controller.zero_state(batch_size,dtype),
-            access_state=self.access.initial_state(batch_size, dtype),
-            access_output=self.access.initial_output(batch_size, dtype)
-        )
+    Returns:
+      A tuple `(output, next_state)` where `output` is a tensor and `next_state`
+      is a `DNCState` tuple containing the fields `access_output`,
+      `access_state`, and `controller_state`.
+    """
 
-if __name__ == "__main__":
-    """set parameters"""
-    controller_config = {
-        "num_units": 4
-    }
-    access_config = {
-        "memory_size": 10
-    }
-    output_size = 10
-    batch_size = 3
+    prev_access_output = prev_state.access_output
+    prev_access_state = prev_state.access_state
+    prev_controller_state = prev_state.controller_state
 
-    #############################################
-    #############################################
-    # test class DNC
+    batch_flatten = tf.layers.Flatten()
+    controller_input = tf.concat(
+        [batch_flatten(inputs), batch_flatten(prev_access_output)], 1)
 
-    dnc = DNC(access_config=access_config,
-              controller_config=controller_config,
-              output_size=output_size)
+    # the shape of controller_output is `[batch_size, num_units]`
+    controller_output, controller_state = self._controller(
+        controller_input, prev_controller_state)
 
-    #########################################
-    # test DNC.build
-    inputs = tf.constant(np.random.rand(batch_size, 1, 5))
-    prev_state = dnc.initial_state(batch_size=batch_size)
-    output, dnc_state = dnc.build(inputs=inputs, prev_state=prev_state)
+    controller_output = self._clip_if_enabled(controller_output)
 
-    with tf.Session() as sess:
-        writer = tf.summary.FileWriter("logs/", sess.graph)
-        sess.run(tf.initialize_all_variables())
-        output, dnc_state = sess.run([output, dnc_state])
-        print(output)
-        print(dnc_state)
+    controller_state = tf.contrib.framework.nest.map_structure(
+        self._clip_if_enabled, controller_state)
+
+    access_output, access_state = self._access(controller_output,
+                                               prev_access_state)
+
+    output = tf.concat([controller_output, batch_flatten(access_output)], 1)
+    # output1 = snt.Linear(
+    #     output_size=self._output_size.as_list()[0],
+    #     name='output_linear')(output)
+    # print(output1)
+    output = access.linear_transform(
+            name='dnc_linear',
+            inputs=output,
+            outputs_size=self._output_size.as_list()[0])
+    # print(output)
+    output = self._clip_if_enabled(output)
+
+    return output, DNCState(
+        access_output=access_output,
+        access_state=access_state,
+        controller_state=controller_state)
+
+  def initial_state(self, batch_size, dtype=tf.float32):
+    return DNCState(
+        controller_state=self._controller.zero_state(batch_size,dtype),
+        access_state=self._access.zero_state(batch_size, dtype),
+        access_output=tf.zeros(
+            [batch_size] + self._access.output_size.as_list(), dtype)
+    )
+
+  @property
+  def state_size(self):
+    return self._state_size
+
+  @property
+  def output_size(self):
+    return self._output_size

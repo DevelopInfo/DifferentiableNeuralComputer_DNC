@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import collections
 import numpy as np
+import sonnet as snt
 import tensorflow as tf
 
 DatasetTensors = collections.namedtuple('DatasetTensors', ('observations',
@@ -48,7 +49,6 @@ def masked_sigmoid_cross_entropy(logits,
   Returns:
     A `Tensor` representing the log-probability of the target.
   """
-
   xent = tf.nn.sigmoid_cross_entropy_with_logits(labels=target, logits=logits)
   loss_time_batch = tf.reduce_sum(xent, axis=2)
   loss_batch = tf.reduce_sum(loss_time_batch * mask, axis=0)
@@ -112,7 +112,7 @@ def bitstring_readable(data, batch_size, model_output=None, whole_batch=False):
   return '\n' + '\n\n\n\n'.join(batch_strings)
 
 
-class RepeatCopy():
+class RepeatCopy(snt.AbstractModule):
   """Sequence data generator for the task of repeating a random binary pattern.
 
   When called, an instance of this class will return a tuple of tensorflow ops
@@ -176,11 +176,11 @@ class RepeatCopy():
   def __init__(
       self,
       num_bits=6,
-      batch_size=3,
+      batch_size=1,
       min_length=1,
-      max_length=10,
+      max_length=1,
       min_repeats=1,
-      max_repeats=3,
+      max_repeats=2,
       norm_max=10,
       log_prob_in_bits=False,
       time_average_cost=False,
@@ -209,7 +209,8 @@ class RepeatCopy():
           steps, in each sequence before any subsequent reduction over the time
           and batch dimensions.
     """
-    self._name = name
+    super(RepeatCopy, self).__init__(name=name)
+
     self._batch_size = batch_size
     self._num_bits = num_bits
     self._min_length = min_length
@@ -272,8 +273,7 @@ class RepeatCopy():
 
     # Pads all the batches to have the same total sequence length.
     total_length_batch = sub_seq_length_batch * (num_repeats_batch + 1) + 3
-    # max_length_batch = tf.reduce_max(total_length_batch)
-    max_length_batch = 10
+    max_length_batch = tf.reduce_max(total_length_batch)
     residual_length_batch = max_length_batch - total_length_batch
 
     obs_batch_shape = [max_length_batch, batch_size, full_obs_size]
@@ -390,21 +390,3 @@ class RepeatCopy():
     obs = np.concatenate([obs[:,:,:-1], unnormalised_num_reps_flag], axis=2)
     data = data._replace(observations=obs)
     return bitstring_readable(data, self.batch_size, model_output, whole_batch)
-
-# test
-
-if __name__ == "__main__":
-  """set parameters"""
-
-  ###############################
-  # test class RepeatCopy
-
-  repeatCopy = RepeatCopy()
-  ###############################
-  datasetTensors = repeatCopy._build()
-
-  with tf.Session() as sess:
-    datasetTensors = sess.run(datasetTensors)
-    print(datasetTensors.observations.shape)
-    print(datasetTensors.target.shape)
-    print(datasetTensors.mask.shape)

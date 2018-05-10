@@ -66,175 +66,101 @@ tf.flags.DEFINE_integer("checkpoint_interval", -1,
 
 
 def run_model(input_sequence, output_size):
-    """Runs model on input sequence."""
+  """Runs model on input sequence."""
 
-    access_config = {
+  access_config = {
       "memory_size": FLAGS.memory_size,
       "word_size": FLAGS.word_size,
       "num_reads": FLAGS.num_read_heads,
       "num_writes": FLAGS.num_write_heads,
-    }
-    controller_config = {
+  }
+  controller_config = {
       "num_units": FLAGS.hidden_size,
-    }
+  }
+  clip_value = FLAGS.clip_value
 
-    dnc_core = dnc.DNC(access_config, controller_config, output_size)
-    initial_state = dnc_core.initial_state(batch_size=FLAGS.batch_size,
-                                           dtype=tf.float32)
-    output_sequence, _ = dynamic_dnc(
+  dnc_core = dnc.DNC(access_config, controller_config, output_size, clip_value)
+  initial_state = dnc_core.initial_state(FLAGS.batch_size)
+  output_sequence, _ = tf.nn.dynamic_rnn(
       cell=dnc_core,
       inputs=input_sequence,
+      time_major=True,
       initial_state=initial_state)
 
-    return output_sequence
-
-
-def dynamic_dnc(cell, inputs, initial_state, time_major=True):
-    """Custom dynamic_dnc
-
-    Args:
-        cell: A instance of class DNC
-        inputs: A tensor whose shape is `[time, batch_size, input_length]`
-        initial_state: A namedtuple instance of collection DNCState
-    Return:
-        A tensor "outputs" and a tuple "(output, access_state)"
-    """
-    time = inputs.get_shape().as_list()[0]
-    output = initial_state.access_output
-    access_state = initial_state
-    outputs = []
-    for t in range(time):
-        output, access_state = cell.build(inputs=tf.reduce_sum(input_tensor=inputs[1, None],axis=0),
-                                          prev_state=access_state)
-        outputs.append(output)
-    outputs = tf.stack(outputs, axis=0)
-    return outputs, (output, access_state)
+  return output_sequence
 
 
 def train(num_training_iterations, report_interval):
-    """Trains the DNC and periodically reports the loss."""
+  """Trains the DNC and periodically reports the loss."""
 
-    dataset = repeat_copy.RepeatCopy(FLAGS.num_bits,
-                                     FLAGS.batch_size,
-                                     FLAGS.min_length,
-                                     FLAGS.max_length,
-                                     FLAGS.min_repeats,
-                                     FLAGS.max_repeats)
-    dataset_tensors = dataset._build()
+  dataset = repeat_copy.RepeatCopy(FLAGS.num_bits, FLAGS.batch_size,
+                                   FLAGS.min_length, FLAGS.max_length,
+                                   FLAGS.min_repeats, FLAGS.max_repeats)
+  dataset_tensors = dataset()
 
-    output_logits = run_model(dataset_tensors.observations, dataset.target_size)
-    # Used for visualization.
-    output = tf.round(
+  output_logits = run_model(dataset_tensors.observations, dataset.target_size)
+  # Used for visualization.
+  output = tf.round(
       tf.expand_dims(dataset_tensors.mask, -1) * tf.sigmoid(output_logits))
 
-    train_loss = dataset.cost(output_logits, dataset_tensors.target,
-                              dataset_tensors.mask)
+  train_loss = dataset.cost(output_logits, dataset_tensors.target,
+                            dataset_tensors.mask)
 
-    # Set up optimizer with global norm clipping.
-    trainable_variables = tf.trainable_variables()
-    grads, _ = tf.clip_by_global_norm(
-        tf.gradients(train_loss, trainable_variables), FLAGS.max_grad_norm)
+  # Set up optimizer with global norm clipping.
+  trainable_variables = tf.trainable_variables()
+  grads, _ = tf.clip_by_global_norm(
+      tf.gradients(train_loss, trainable_variables), FLAGS.max_grad_norm)
 
-    global_step = tf.get_variable(
-        name="global_step",
-        shape=[],
-        dtype=tf.int64,
-        initializer=tf.zeros_initializer(),
-        trainable=False,
-        collections=[tf.GraphKeys.GLOBAL_VARIABLES, tf.GraphKeys.GLOBAL_STEP])
+  global_step = tf.get_variable(
+      name="global_step",
+      shape=[],
+      dtype=tf.int64,
+      initializer=tf.zeros_initializer(),
+      trainable=False,
+      collections=[tf.GraphKeys.GLOBAL_VARIABLES, tf.GraphKeys.GLOBAL_STEP])
 
-    optimizer = tf.train.RMSPropOptimizer(
-        FLAGS.learning_rate, epsilon=FLAGS.optimizer_epsilon)
-    train_step = optimizer.apply_gradients(
-        zip(grads, trainable_variables), global_step=global_step)
+  optimizer = tf.train.RMSPropOptimizer(
+      FLAGS.learning_rate, epsilon=FLAGS.optimizer_epsilon)
+  train_step = optimizer.apply_gradients(
+      zip(grads, trainable_variables), global_step=global_step)
 
-    saver = tf.train.Saver()
+  saver = tf.train.Saver()
 
-    if FLAGS.checkpoint_interval > 0:
-        hooks = [
-            tf.train.CheckpointSaverHook(
-                checkpoint_dir=FLAGS.checkpoint_dir,
-                save_steps=FLAGS.checkpoint_interval,
-                saver=saver)
-        ]
-    else:
-        hooks = []
+  if FLAGS.checkpoint_interval > 0:
+    hooks = [
+        tf.train.CheckpointSaverHook(
+            checkpoint_dir=FLAGS.checkpoint_dir,
+            save_steps=FLAGS.checkpoint_interval,
+            saver=saver)
+    ]
+  else:
+    hooks = []
 
-    # Train.
-    with tf.train.SingularMonitoredSession(
-        hooks=hooks, checkpoint_dir=FLAGS.checkpoint_dir) as sess:
+  # Train.
+  with tf.train.SingularMonitoredSession(
+      hooks=hooks, checkpoint_dir=FLAGS.checkpoint_dir) as sess:
+    writer = tf.summary.FileWriter("logs", sess.graph)
+    start_iteration = sess.run(global_step)
+    total_loss = 0
 
-        start_iteration = sess.run(global_step)
+    for train_iteration in range(start_iteration, num_training_iterations):
+      _, loss = sess.run([train_step, train_loss])
+      total_loss += loss
+
+      if (train_iteration + 1) % report_interval == 0:
+        dataset_tensors_np, output_np = sess.run([dataset_tensors, output])
+        dataset_string = dataset.to_human_readable(dataset_tensors_np,
+                                                   output_np)
+        tf.logging.info("%d: Avg training loss %f.\n%s",
+                        train_iteration, total_loss / report_interval,
+                        dataset_string)
         total_loss = 0
-
-        for train_iteration in range(start_iteration, num_training_iterations):
-            _, loss = sess.run([train_step, train_loss])
-            total_loss += loss
-
-            if (train_iteration + 1) % report_interval == 0:
-                dataset_tensors_np, output_np = sess.run([dataset_tensors, output])
-                dataset_string = dataset.to_human_readable(dataset_tensors_np,
-                                                           output_np)
-                tf.logging.info("%d: Avg training loss %f.\n%s",
-                                train_iteration, total_loss / report_interval,
-                                dataset_string)
-                total_loss = 0
 
 
 def main(unused_argv):
-    tf.logging.set_verbosity(3)  # Print INFO log messages.
-    train(FLAGS.num_training_iterations, FLAGS.report_interval)
+  tf.logging.set_verbosity(3)  # Print INFO log messages.
+  train(FLAGS.num_training_iterations, FLAGS.report_interval)
 
-
-import numpy as np
 
 if __name__ == "__main__":
-    """set parameters"""
-    access_config = {
-        "memory_size": FLAGS.memory_size,
-        "word_size": FLAGS.word_size,
-        "num_reads": FLAGS.num_read_heads,
-        "num_writes": FLAGS.num_write_heads,
-    }
-    controller_config = {
-        "num_units": FLAGS.hidden_size,
-    }
-    output_size = 6
-
-    batch_size = FLAGS.batch_size
-    time = 4
-    input_length = 5
-
-    #############################################
-    # test dynamic_dnc
-
-    # dnc_core = dnc.DNC(access_config, controller_config, output_size)
-    # initial_state = dnc_core.initial_state(batch_size)
-    # inputs = tf.constant(np.random.rand(batch_size, time, input_length))
-    #
-    # outputs, state = dynamic_dnc(cell=dnc_core,
-    #                       inputs=inputs,
-    #                       initial_state=initial_state)
-    #
-    # with tf.Session() as sess:
-    #     sess.run(tf.global_variables_initializer())
-    #     outputs, state = sess.run([outputs, state])
-    #     print(outputs.shape)
-    #     print(state)
-
-    ##############################################
-    # test run_model
-
-    # input_sequence = tf.constant(np.random.rand(batch_size, time, input_length))
-    # output_sequence = run_model(input_sequence=input_sequence,
-    #           output_size=output_size)
-    #
-    # with tf.Session() as sess:
-    #     sess.run(tf.global_variables_initializer())
-    #     output_sequence = sess.run(output_sequence)
-    #     print(output_sequence.shape)
-
-    #############################
-    # test train
-
-    tf.app.run()
+  tf.app.run()
