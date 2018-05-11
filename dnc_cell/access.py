@@ -21,7 +21,7 @@ from __future__ import print_function
 import collections
 import tensorflow as tf
 
-import addressing
+import dnc_cell.addressing as addressing
 
 AccessState = collections.namedtuple('AccessState', (
     'memory', 'read_weights', 'write_weights', 'linkage', 'usage'))

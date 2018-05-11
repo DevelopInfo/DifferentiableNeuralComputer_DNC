@@ -26,8 +26,7 @@ import collections
 import numpy as np
 import tensorflow as tf
 
-
-import access
+import dnc_cell.access as access
 
 DNCState = collections.namedtuple('DNCState', ('access_output', 'access_state',
                                                'controller_state'))

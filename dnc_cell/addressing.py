@@ -21,7 +21,7 @@ from __future__ import print_function
 import collections
 import tensorflow as tf
 
-import util
+import dnc_cell.util as util
 
 # Ensure values are greater than epsilon to avoid numerical instability.
 _EPSILON = 1e-6
