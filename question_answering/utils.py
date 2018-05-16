@@ -2,8 +2,11 @@
 
 
 import tensorflow as tf
+import numpy as np
+import linecache
 
 def read_and_decode(tfrecord_file, story_t, query_t, ans_t, ans_index_t):
+    """Read the tfrecord file and decode the data"""
     filename_queue = tf.train.string_input_producer([tfrecord_file])
     reader = tf.TFRecordReader()
     key, serialized_example = reader.read(filename_queue)
@@ -15,17 +18,41 @@ def read_and_decode(tfrecord_file, story_t, query_t, ans_t, ans_index_t):
                                            "ans_index": tf.FixedLenFeature([], tf.string)
                                        })
     story = tf.decode_raw(features["story"], tf.int64)
-    story = tf.reshape(story, (1, story_t))
+    story = tf.reshape(story, (story_t, 1))
+    story = tf.cast(story, tf.float32)
     query = tf.decode_raw(features["query"], tf.int64)
-    query = tf.reshape(query, (1, query_t))
+    query = tf.reshape(query, (query_t, 1))
+    query = tf.cast(query, tf.float32)
     ans = tf.decode_raw(features["ans"], tf.int64)
-    ans = tf.reshape(ans, (1, ans_t))
+    ans = tf.reshape(ans, (ans_t, 1))
     ans_index = tf.decode_raw(features["ans_index"], tf.int64)
-    ans_index = tf.reshape(ans_index, (1, ans_index_t))
-
+    ans_index = tf.reshape(ans_index, (ans_index_t, 1))
 
     return story, query, ans, ans_index
 
+
+
+def word_readable(lexicons_dict_file, word_index):
+    """
+    Args:
+        lexicons_dict_file: the lexicons dictionary file
+        word_index: a numpy.ndarray whose range is between 1 to 156
+        and shape is `[batch_size, sequence_len]`
+    Returns:
+        return the word string which indicated by word_index
+    """
+    word = ""
+    for i in range(word_index.shape[0]):
+        word_line = ""
+        for j in range(word_index.shape[1]):
+            # print(word_index[i][j])
+            if word_index[i][j] >= 1 or word_index[i][j] <= 156:
+                word_line = word_line + linecache.getline(
+                    filename=lexicons_dict_file,
+                    lineno=word_index[i][j]).strip('\n') + " "
+        word = word + "\n" + word_line
+    word += "\n"
+    return word
 
 if __name__ == "__main__":
     story, query, ans, ans_index = read_and_decode(
@@ -47,4 +74,5 @@ if __name__ == "__main__":
         tf.train.start_queue_runners(sess=sess)
         for i in range(3):
             story_val, query_val = sess.run([story_batch, query_batch])
-            print(story_val.shape)
+            word_readable(lexicons_dict_file="lexicons_dict.txt",
+                          word_index=story_val.reshape(10,56).astype(np.int64))
