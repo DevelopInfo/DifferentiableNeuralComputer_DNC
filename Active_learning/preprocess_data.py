@@ -6,6 +6,7 @@ STOP_WORD = "stop_word.txt"
 TEST_PATH = "test.txt"
 ENCODING_FILE = "encoding.txt"
 
+
 def create_dictoinary(data_file, dict_file, stop_word):
     """Create a word dictionary file"""
     stop_list = []
@@ -29,6 +30,7 @@ def create_dictoinary(data_file, dict_file, stop_word):
 
     word_dict_file.close()
 
+
 def train_to_test(train_file, test_file):
     """Make a test file from a training file"""
     test_obj = open(test_file, 'w')
@@ -42,6 +44,7 @@ def train_to_test(train_file, test_file):
                 test_obj.write(word)
 
     test_obj.close()
+
 
 def encoding_data(input_file,
                   encoding_file,

@@ -2,48 +2,61 @@
 
 import tensorflow as tf
 from model import Model
+import utils
 
 FLAGS = tf.flags.FLAGS
 
 # Task parameters
 tf.flags.DEFINE_integer("batch_size", 10,
                         "Batch size for training.")
-tf.flags.DEFINE_integer("time", 20,
+tf.flags.DEFINE_integer("time", 12,
                         "the length for input sequence.")
-tf.flags.DEFINE_integer("word_embedding_size", 1,
+tf.flags.DEFINE_integer("word_embedding_size", 3,
                         "the size for word embedding.")
+tf.flags.DEFINE_integer("vocabulary_size", 547,
+                        "the size for vocabulary")
 
 # Training options.
 tf.flags.DEFINE_integer("num_training_iterations", 1000,
                         "Number of iteration to train for.")
 tf.flags.DEFINE_integer("report_interval", 100,
                         "Iterations between reports.")
-tf.flags.DEFINE_integer("checkpoint_dir", "./checkpoint",
-                        "Checkpointing directory.")
+tf.flags.DEFINE_string("checkpoint_dir", "./checkpoint",
+                       "Checkpoint directory.")
 tf.flags.DEFINE_integer("checkpoint_interval", 100,
-                        "Checkpointing step interval.")
+                        "Checkpoint step interval.")
 
 # Optimizer parameters
-tf.flags.DEFINE_integer("max_grad_norm", 50,
-                        "Gradient clipping norm limit.")
-tf.flags.DEFINE_integer("learning_rate", 1e-4,
-                        "Optimizer learning rate.")
-tf.flags.DEFINE_integer("optimizer_epsilon", 1e-10,
-                        "Epsilon used for RMSProp optimizer.")
+tf.flags.DEFINE_float("max_grad_norm", 50,
+                      "Gradient clipping norm limit.")
+tf.flags.DEFINE_float("learning_rate", 1e-4,
+                      "Optimizer learning rate.")
+tf.flags.DEFINE_float("optimizer_epsilon", 1e-10,
+                      "Epsilon used for RMSProp optimizer.")
 
-def train(num_training_interations=FLAGS.num_training_interation,
+
+def train(vocabulary_size=FLAGS.vocabulary_size,
+          embedding_size=FLAGS.word_embedding_size,
+          num_training_iterations=FLAGS.num_training_iterations,
           report_interval=FLAGS.report_interval):
     # Define the placeholder
     inputs = tf.placeholder(
-        shape=(FLAGS.batch_size, FLAGS.time, FLAGS.word_embedding_size),
-        dtype=tf.float32)
+        shape=(FLAGS.batch_size, FLAGS.time),
+        dtype=tf.int64)
     labels = tf.placeholder(
         shape=FLAGS.batch_size, dtype=tf.int64)
 
+    # Word embedding
+    embeddings = tf.Variable(
+            tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0))
+    embed = tf.nn.embedding_lookup(embeddings, inputs)
+    print(embed)
+
     # Get model's logits
     # The shape for logits is [batch_size, max_classes]
-    logits = Model().run_model(input_sequence=input)
-
+    logits = Model().run_model(batch_size=FLAGS.batch_size,
+                               input_sequence=embed)
+    print(logits)
     # Define loss function
     train_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=logits, labels=labels)
@@ -90,11 +103,17 @@ def train(num_training_interations=FLAGS.num_training_interation,
         hooks=hooks, checkpoint_dir=FLAGS.checkpoint_dir
     ) as sess:
         total_loss = 0
-        for train_iteration in range(num_training_interations):
+        for train_iteration in range(num_training_iterations):
+            print(train_iteration)
             # Read data.
+            inputs_batch, labels_batch = utils.read_batch_data(
+                    start_line=train_iteration*FLAGS.batch_size+1,
+                    batch_size=FLAGS.batch_size)
 
             # Run the session.
-            _, average_loss_val = sess.run([train_step, average_loss])
+            _, average_loss_val = sess.run(fetches=[train_step, average_loss],
+                                           feed_dict={inputs: inputs_batch,
+                                                      labels: labels_batch})
             total_loss += average_loss_val
 
             # Report the result.
@@ -103,10 +122,11 @@ def train(num_training_interations=FLAGS.num_training_interation,
                                 train_iteration, total_loss / report_interval)
                 total_loss = 0
 
+
 def main(unused_argv):
-  tf.logging.set_verbosity(3)  # Print INFO log messages.
-  train(FLAGS.num_training_iterations, FLAGS.report_interval)
+    tf.logging.set_verbosity(3)  # Print INFO log messages.
+    train()
 
 
 if __name__ == "__main__":
-  tf.app.run()
+    tf.app.run()
