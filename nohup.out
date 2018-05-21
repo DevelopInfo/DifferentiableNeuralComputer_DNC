@@ -1,0 +1,92 @@
+WARN: Markdown support not loaded: since build 181.4668 > PC-181.4445.76
+QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-root'
+
+(netease-cloud-music:2254): IBUS-WARNING **: The owner of /home/zhoujianbo/.config/ibus/bus is not root!
+05-21, 10:12:18 [Error  ] [                          0] Media changed
+05-21, 10:12:18 [Error  ] [                          0] Player opening
+05-21, 10:12:27 [Error  ] [                          0] Media changed
+05-21, 10:12:27 [Error  ] [                          0] Player opening
+No appenders assotiated with category qt.network.ssl
+[Warning] <> QSslSocket: cannot resolve SSLv2_client_method
+No appenders assotiated with category qt.network.ssl
+[Warning] <> QSslSocket: cannot resolve SSLv2_server_method
+05-21, 10:17:08 [Error  ] [                          0] Media changed
+05-21, 10:17:08 [Error  ] [                          0] Player opening
+05-21, 10:19:08 [Error  ] [                          0] Media changed
+05-21, 10:19:08 [Error  ] [                          0] Player opening
+05-21, 10:22:57 [Error  ] [                          0] Media changed
+05-21, 10:22:57 [Error  ] [                          0] Player opening
+05-21, 10:29:19 [Error  ] [                          0] Media changed
+05-21, 10:29:19 [Error  ] [                          0] Player opening
+05-21, 10:33:09 [Error  ] [                          0] Media changed
+05-21, 10:33:09 [Error  ] [                          0] Player opening
+05-21, 10:38:48 [Error  ] [                          0] Media changed
+05-21, 10:38:48 [Error  ] [                          0] Player opening
+05-21, 10:40:01 [Error  ] [                          0] Media changed
+05-21, 10:40:01 [Error  ] [                          0] Player opening
+QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-root'
+
+(netease-cloud-music:4791): IBUS-WARNING **: The owner of /home/zhoujianbo/.config/ibus/bus is not root!
+05-21, 10:43:53 [Error  ] [                          0] Media changed
+05-21, 10:43:53 [Error  ] [                          0] Player opening
+[00007f2d64010448] mpgatofixed32 audio converter error: libmad error: bad main_data_begin pointer
+QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-root'
+
+(netease-cloud-music:5844): IBUS-WARNING **: The owner of /home/zhoujianbo/.config/ibus/bus is not root!
+05-21, 10:44:43 [Error  ] [                          0] Media changed
+05-21, 10:44:43 [Error  ] [                          0] Player opening
+[00007f46c8010448] mpgatofixed32 audio converter error: libmad error: bad main_data_begin pointer
+05-21, 10:47:02 [Error  ] [                          0] Media changed
+05-21, 10:47:02 [Error  ] [                          0] Player opening
+No appenders assotiated with category qt.network.ssl
+[Warning] <> QSslSocket: cannot resolve SSLv2_client_method
+No appenders assotiated with category qt.network.ssl
+[Warning] <> QSslSocket: cannot resolve SSLv2_server_method
+05-21, 10:49:20 [Error  ] [                          0] Media changed
+05-21, 10:49:20 [Error  ] [                          0] Player opening
+05-21, 10:52:39 [Error  ] [                          0] Media changed
+05-21, 10:52:39 [Error  ] [                          0] Player opening
+05-21, 10:55:58 [Error  ] [                          0] Media changed
+05-21, 10:55:58 [Error  ] [                          0] Player opening
+05-21, 11:00:01 [Error  ] [                          0] Media changed
+05-21, 11:00:01 [Error  ] [                          0] Player opening
+05-21, 11:03:41 [Error  ] [                          0] Media changed
+05-21, 11:03:41 [Error  ] [                          0] Player opening
+05-21, 11:06:49 [Error  ] [                          0] Media changed
+05-21, 11:06:49 [Error  ] [                          0] Player opening
+05-21, 11:11:02 [Error  ] [                          0] Media changed
+05-21, 11:11:02 [Error  ] [                          0] Player opening
+05-21, 11:15:18 [Error  ] [                          0] Media changed
+05-21, 11:15:18 [Error  ] [                          0] Player opening
+05-21, 11:18:30 [Error  ] [                          0] Media changed
+05-21, 11:18:30 [Error  ] [                          0] Player opening
+05-21, 11:21:59 [Error  ] [                          0] Media changed
+05-21, 11:21:59 [Error  ] [                          0] Player opening
+05-21, 11:26:01 [Error  ] [                          0] Media changed
+05-21, 11:26:01 [Error  ] [                          0] Player opening
+05-21, 11:30:42 [Error  ] [                          0] Media changed
+05-21, 11:30:42 [Error  ] [                          0] Player opening
+05-21, 11:35:23 [Error  ] [                          0] Media changed
+05-21, 11:35:23 [Error  ] [                          0] Player opening
+05-21, 11:37:23 [Error  ] [                          0] Media changed
+05-21, 11:37:23 [Error  ] [                          0] Player opening
+05-21, 11:41:11 [Error  ] [                          0] Media changed
+05-21, 11:41:11 [Error  ] [                          0] Player opening
+05-21, 11:47:34 [Error  ] [                          0] Media changed
+05-21, 11:47:34 [Error  ] [                          0] Player opening
+05-21, 11:51:24 [Error  ] [                          0] Media changed
+05-21, 11:51:24 [Error  ] [                          0] Player opening
+05-21, 11:57:03 [Error  ] [                          0] Media changed
+05-21, 11:57:03 [Error  ] [                          0] Player opening
+05-21, 12:01:00 [Error  ] [                          0] Media changed
+05-21, 12:01:00 [Error  ] [                          0] Player opening
+05-21, 12:05:17 [Error  ] [                          0] Media changed
+05-21, 12:05:17 [Error  ] [                          0] Player opening
+05-21, 12:07:35 [Error  ] [                          0] Media changed
+05-21, 12:07:35 [Error  ] [                          0] Player opening
+05-21, 12:10:54 [Error  ] [                          0] Media changed
+05-21, 12:10:54 [Error  ] [                          0] Player opening
+[0521/121413.320590:ERROR:backend_impl.cc(1021)] Critical error found -8
+[0521/121413.321146:ERROR:entry_impl.cc(1037)] No file for a3010960
+05-21, 12:14:22 [Error  ] [                          0] Media changed
+05-21, 12:14:22 [Error  ] [                          0] Player opening

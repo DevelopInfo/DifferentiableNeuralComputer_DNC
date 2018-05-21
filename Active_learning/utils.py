@@ -17,35 +17,38 @@ def read_batch_data(start_line,
                     encoded_train_file=ENCODED_TRAINING_FILE):
     """Read one batch size data started from start_line.
     Args:
-        start_line: the index for start line
+        start_line: the index for start line,
+            which may be larger than file length
         batch_size: the number for read data size
         encoded_train_file: require a json format file
     Returns:
         input_list: a ndarray whose shape is [batch_size, time]
-        and dtype is np.float32
+            and dtype is np.float32
         label_list: a ndarray whose shape is [batch_size] and
-        dtype is np.float32
+            dtype is np.float32
     """
     input_list = []
     label_list = []
-    with open(encoded_train_file, 'r') as train_obj:
-        end = len(train_obj.readlines())
-        if batch_size-end+start_line+1 > 0:
-            count = (batch_size-end+start_line+1) / end
-            remainder = (batch_size-end+start_line+1) % end
+    end = len(open(encoded_train_file, 'r').readlines())
+    counter = batch_size
+    linenum = start_line % end + 1
 
-        for line_index, json_str in enumerate(train_obj):
-
-                json_dict = json.loads(json_str)
-                input_list.append(json_dict['input'])
-                label_list.append(json_dict['label'])
+    while counter > 0:
+        if linenum > end:
+            linenum = 1
+        json_str = linecache.getline(filename=encoded_train_file, lineno=linenum)
+        linenum += 1
+        counter -= 1
+        json_dict = json.loads(json_str)
+        input_list.append(json_dict['input'])
+        label_list.append(json_dict['label'])
 
     # Convert string to number
     for i in range(len(input_list)):
         input_list[i] = input_list[i].split()
         for index, word in enumerate(input_list[i]):
             input_list[i][index] = int(word)
-    input_array = np.array(input_list, dtype=np.float32)
+    input_array = np.array(input_list, dtype=np.int64)
 
     for i in range(len(label_list)):
         label_list[i] = int(label_list[i])
@@ -84,7 +87,7 @@ def encode_training_data(train_file=TRAIN_FILE,
     """Encoding training data
     Args:
         train_file: require to a json format file.
-        encoded_training_file: a encoded training file.
+        encoded_training_file: a encoded training file is also a json format file.
     """
     # Create a dictionary.
     dict = {}
@@ -132,11 +135,11 @@ if __name__ == "__main__":
     input = np.random.randint(
         low=1, high=547, size=(batch_size, time)
     )
-    print(type(input))
+    # print(type(input))
 
     # Test
     # decode_and_write_data(input)
 
     # encode_training_data()
 
-    read_batch_data(start_line=1, batch_size=batch_size)
+    read_batch_data(start_line=18, batch_size=batch_size)

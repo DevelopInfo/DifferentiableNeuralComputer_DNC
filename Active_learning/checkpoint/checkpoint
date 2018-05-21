@@ -1,2 +1,6 @@
-model_checkpoint_path: "model.ckpt-2"
-all_model_checkpoint_paths: "model.ckpt-2"
+model_checkpoint_path: "model.ckpt-3003"
+all_model_checkpoint_paths: "model.ckpt-2604"
+all_model_checkpoint_paths: "model.ckpt-2704"
+all_model_checkpoint_paths: "model.ckpt-2804"
+all_model_checkpoint_paths: "model.ckpt-2904"
+all_model_checkpoint_paths: "model.ckpt-3003"

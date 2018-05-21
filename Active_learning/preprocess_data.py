@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import json
+
 FILE_PATH = "corpus.txt"
 DICT_NAME = "word_dict.txt"
 STOP_WORD = "stop_word.txt"
 TEST_PATH = "test.txt"
-ENCODING_FILE = "encoding.txt"
+ENCODING_FILE = "encoded_test.json"
 
 
 def create_dictoinary(data_file, dict_file, stop_word):
@@ -46,11 +48,15 @@ def train_to_test(train_file, test_file):
     test_obj.close()
 
 
-def encoding_data(input_file,
-                  encoding_file,
-                  dict_file,
-                  stop_word):
-    """Make an encoding file"""
+def encoding_data(input_file=TEST_PATH,
+                  encoding_file=ENCODING_FILE,
+                  dict_file=DICT_NAME,
+                  stop_word=STOP_WORD):
+    """Make an encoding file
+    Args:
+        input_file: input_file is a common file.
+        encoding_file: encoding_file is a json format file and is encoded.
+    """
     encoding_file = open(encoding_file, 'w')
 
     # Create a dictionary.
@@ -71,19 +77,40 @@ def encoding_data(input_file,
             for word in line:
                 stop_word_list.append(word)
 
+    # Get the max length for sentence.
+    max_sentence = 0
     with open(input_file, 'r') as input_obj:
         for line in input_obj:
-            data_line = ""
+            counter = 0
             for word in line:
                 if word in stop_word_list:
                     continue
-                # print(dict[word])
-                data_line = data_line + "%d" % dict[word] + " "
-            encoding_file.write(data_line+"\n")
+                counter += 1
+                if counter > max_sentence:
+                    max_sentence = counter
+
+    # Encode data, padding data and create json file
+    with open(input_file, 'r') as input_obj:
+        for line in input_obj:
+            data_dict = {}
+            data_dict["label"] = ""
+            data_dict["input"] = ""
+            counter = 0
+            for word in line:
+                if word in stop_word_list:
+                    continue
+                counter += 1
+                data_dict["input"] = data_dict["input"] + "%d " % int(dict[word])
+
+            # padding data
+            if counter < max_sentence:
+                while counter < max_sentence:
+                    counter += 1
+                    data_dict["input"] = data_dict["input"] + "%d " % 0
+            json_str = json.dumps(data_dict)
+            encoding_file.write(json_str+"\n")
 
     encoding_file.close()
-
-
 
 
 if __name__ == "__main__":

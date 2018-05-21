@@ -7,7 +7,7 @@ node {
       list {
         shape {
           dim {
-            size: -1
+            size: 10
           }
           dim {
             size: 12
@@ -27,7 +27,7 @@ node {
     value {
       shape {
         dim {
-          size: -1
+          size: 10
         }
         dim {
           size: 12
@@ -44,7 +44,9 @@ node {
     value {
       list {
         shape {
-          unknown_rank: true
+          dim {
+            size: 10
+          }
         }
       }
     }
@@ -59,7 +61,9 @@ node {
     key: "shape"
     value {
       shape {
-        unknown_rank: true
+        dim {
+          size: 10
+        }
       }
     }
   }
@@ -95,7 +99,7 @@ node {
             size: 2
           }
         }
-        tensor_content: "\350\003\000\000d\000\000\000"
+        tensor_content: "#\002\000\000\003\000\000\000"
       }
     }
   }
@@ -176,10 +180,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -242,10 +246,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -269,10 +273,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -288,10 +292,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -314,10 +318,10 @@ node {
     value {
       shape {
         dim {
-          size: 1000
+          size: 547
         }
         dim {
-          size: 100
+          size: 3
         }
       }
     }
@@ -354,10 +358,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -400,10 +404,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -411,10 +415,55 @@ node {
   }
 }
 node {
+  name: "embedding_lookup/axis"
+  op: "Const"
+  attr {
+    key: "_class"
+    value {
+      list {
+        s: "loc:@Variable"
+      }
+    }
+  }
+  attr {
+    key: "_output_shapes"
+    value {
+      list {
+        shape {
+        }
+      }
+    }
+  }
+  attr {
+    key: "dtype"
+    value {
+      type: DT_INT32
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT32
+        tensor_shape {
+        }
+        int_val: 0
+      }
+    }
+  }
+}
+node {
   name: "embedding_lookup"
-  op: "Gather"
+  op: "GatherV2"
   input: "Variable/read"
   input: "Placeholder"
+  input: "embedding_lookup/axis"
+  attr {
+    key: "Taxis"
+    value {
+      type: DT_INT32
+    }
+  }
   attr {
     key: "Tindices"
     value {
@@ -441,22 +490,16 @@ node {
       list {
         shape {
           dim {
-            size: -1
+            size: 10
           }
           dim {
             size: 12
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
-    }
-  }
-  attr {
-    key: "validate_indices"
-    value {
-      b: true
     }
   }
 }
@@ -1252,10 +1295,10 @@ node {
             size: 12
           }
           dim {
-            size: -1
+            size: 10
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -1264,14 +1307,7 @@ node {
 }
 node {
   name: "model/rnn/Shape"
-  op: "Shape"
-  input: "model/rnn/transpose"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
+  op: "Const"
   attr {
     key: "_output_shapes"
     value {
@@ -1285,9 +1321,23 @@ node {
     }
   }
   attr {
-    key: "out_type"
+    key: "dtype"
     value {
       type: DT_INT32
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT32
+        tensor_shape {
+          dim {
+            size: 3
+          }
+        }
+        tensor_content: "\014\000\000\000\n\000\000\000\003\000\000\000"
+      }
     }
   }
 }
@@ -1322,7 +1372,7 @@ node {
             size: 1
           }
         }
-        int_val: 1
+        int_val: 0
       }
     }
   }
@@ -1358,7 +1408,7 @@ node {
             size: 1
           }
         }
-        int_val: 2
+        int_val: 1
       }
     }
   }
@@ -1459,459 +1509,43 @@ node {
   }
 }
 node {
-  name: "model/rnn/Shape_1"
-  op: "Shape"
-  input: "model/rnn/transpose"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 3
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "out_type"
-    value {
-      type: DT_INT32
-    }
-  }
-}
-node {
-  name: "model/rnn/strided_slice_1/stack"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 1
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 1
-          }
-        }
-        int_val: 0
-      }
-    }
-  }
-}
-node {
-  name: "model/rnn/strided_slice_1/stack_1"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 1
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 1
-          }
-        }
-        int_val: 1
-      }
-    }
-  }
-}
-node {
-  name: "model/rnn/strided_slice_1/stack_2"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 1
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 1
-          }
-        }
-        int_val: 1
-      }
-    }
-  }
-}
-node {
-  name: "model/rnn/strided_slice_1"
-  op: "StridedSlice"
-  input: "model/rnn/Shape_1"
-  input: "model/rnn/strided_slice_1/stack"
-  input: "model/rnn/strided_slice_1/stack_1"
-  input: "model/rnn/strided_slice_1/stack_2"
-  attr {
-    key: "Index"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "T"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-        }
-      }
-    }
-  }
-  attr {
-    key: "begin_mask"
-    value {
-      i: 0
-    }
-  }
-  attr {
-    key: "ellipsis_mask"
-    value {
-      i: 0
-    }
-  }
-  attr {
-    key: "end_mask"
-    value {
-      i: 0
-    }
-  }
-  attr {
-    key: "new_axis_mask"
-    value {
-      i: 0
-    }
-  }
-  attr {
-    key: "shrink_axis_mask"
-    value {
-      i: 1
-    }
-  }
-}
-node {
-  name: "model/rnn/Shape_2"
-  op: "Shape"
-  input: "model/rnn/transpose"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 3
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "out_type"
-    value {
-      type: DT_INT32
-    }
-  }
-}
-node {
-  name: "model/rnn/strided_slice_2/stack"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 1
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 1
-          }
-        }
-        int_val: 1
-      }
-    }
-  }
-}
-node {
-  name: "model/rnn/strided_slice_2/stack_1"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 1
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 1
-          }
-        }
-        int_val: 2
-      }
-    }
-  }
-}
-node {
-  name: "model/rnn/strided_slice_2/stack_2"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 1
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 1
-          }
-        }
-        int_val: 1
-      }
-    }
-  }
-}
-node {
-  name: "model/rnn/strided_slice_2"
-  op: "StridedSlice"
-  input: "model/rnn/Shape_2"
-  input: "model/rnn/strided_slice_2/stack"
-  input: "model/rnn/strided_slice_2/stack_1"
-  input: "model/rnn/strided_slice_2/stack_2"
-  attr {
-    key: "Index"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "T"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-        }
-      }
-    }
-  }
-  attr {
-    key: "begin_mask"
-    value {
-      i: 0
-    }
-  }
-  attr {
-    key: "ellipsis_mask"
-    value {
-      i: 0
-    }
-  }
-  attr {
-    key: "end_mask"
-    value {
-      i: 0
-    }
-  }
-  attr {
-    key: "new_axis_mask"
-    value {
-      i: 0
-    }
-  }
-  attr {
-    key: "shrink_axis_mask"
-    value {
-      i: 1
-    }
-  }
-}
-node {
-  name: "model/rnn/ExpandDims/dim"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-        }
-        int_val: 0
-      }
-    }
-  }
-}
-node {
-  name: "model/rnn/ExpandDims"
-  op: "ExpandDims"
-  input: "model/rnn/strided_slice_2"
-  input: "model/rnn/ExpandDims/dim"
-  attr {
-    key: "T"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "Tdim"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 1
-          }
-        }
-      }
-    }
-  }
-}
-node {
   name: "model/rnn/Const"
+  op: "Const"
+  attr {
+    key: "_output_shapes"
+    value {
+      list {
+        shape {
+          dim {
+            size: 1
+          }
+        }
+      }
+    }
+  }
+  attr {
+    key: "dtype"
+    value {
+      type: DT_INT32
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT32
+        tensor_shape {
+          dim {
+            size: 1
+          }
+        }
+        int_val: 10
+      }
+    }
+  }
+}
+node {
+  name: "model/rnn/Const_1"
   op: "Const"
   attr {
     key: "_output_shapes"
@@ -1979,8 +1613,8 @@ node {
 node {
   name: "model/rnn/concat_1"
   op: "ConcatV2"
-  input: "model/rnn/ExpandDims"
   input: "model/rnn/Const"
+  input: "model/rnn/Const_1"
   input: "model/rnn/concat_1/axis"
   attr {
     key: "N"
@@ -2060,7 +1694,7 @@ node {
       list {
         shape {
           dim {
-            size: -1
+            size: 10
           }
           dim {
             size: 30
@@ -2109,7 +1743,7 @@ node {
 node {
   name: "model/rnn/TensorArray"
   op: "TensorArrayV3"
-  input: "model/rnn/strided_slice_1"
+  input: "model/rnn/strided_slice"
   attr {
     key: "_output_shapes"
     value {
@@ -2147,7 +1781,7 @@ node {
     value {
       shape {
         dim {
-          size: -1
+          size: 10
         }
         dim {
           size: 30
@@ -2171,7 +1805,7 @@ node {
 node {
   name: "model/rnn/TensorArray_1"
   op: "TensorArrayV3"
-  input: "model/rnn/strided_slice_1"
+  input: "model/rnn/strided_slice"
   attr {
     key: "_output_shapes"
     value {
@@ -2209,10 +1843,10 @@ node {
     value {
       shape {
         dim {
-          size: -1
+          size: 10
         }
         dim {
-          size: 100
+          size: 3
         }
       }
     }
@@ -2232,14 +1866,7 @@ node {
 }
 node {
   name: "model/rnn/TensorArrayUnstack/Shape"
-  op: "Shape"
-  input: "model/rnn/transpose"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
+  op: "Const"
   attr {
     key: "_output_shapes"
     value {
@@ -2253,9 +1880,23 @@ node {
     }
   }
   attr {
-    key: "out_type"
+    key: "dtype"
     value {
       type: DT_INT32
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT32
+        tensor_shape {
+          dim {
+            size: 3
+          }
+        }
+        tensor_content: "\014\000\000\000\n\000\000\000\003\000\000\000"
+      }
     }
   }
 }
@@ -2576,7 +2217,7 @@ node {
   name: "model/rnn/Maximum"
   op: "Maximum"
   input: "model/rnn/Maximum/x"
-  input: "model/rnn/strided_slice_1"
+  input: "model/rnn/strided_slice"
   attr {
     key: "T"
     value {
@@ -2596,7 +2237,7 @@ node {
 node {
   name: "model/rnn/Minimum"
   op: "Minimum"
-  input: "model/rnn/strided_slice_1"
+  input: "model/rnn/strided_slice"
   input: "model/rnn/Maximum"
   attr {
     key: "T"
@@ -3027,7 +2668,7 @@ node {
 node {
   name: "model/rnn/while/Less/Enter"
   op: "Enter"
-  input: "model/rnn/strided_slice_1"
+  input: "model/rnn/strided_slice"
   attr {
     key: "T"
     value {
@@ -3505,10 +3146,10 @@ node {
       list {
         shape {
           dim {
-            size: -1
+            size: 10
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -3639,7 +3280,7 @@ node {
             size: 2
           }
         }
-        tensor_content: "\202\000\000\000x\000\000\000"
+        tensor_content: "!\000\000\000x\000\000\000"
       }
     }
   }
@@ -3677,7 +3318,7 @@ node {
         dtype: DT_FLOAT
         tensor_shape {
         }
-        float_val: -0.1549193412065506
+        float_val: -0.1980295032262802
       }
     }
   }
@@ -3715,7 +3356,7 @@ node {
         dtype: DT_FLOAT
         tensor_shape {
         }
-        float_val: 0.1549193412065506
+        float_val: 0.1980295032262802
       }
     }
   }
@@ -3744,7 +3385,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -3826,7 +3467,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -3861,7 +3502,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -3888,7 +3529,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -3914,7 +3555,7 @@ node {
     value {
       shape {
         dim {
-          size: 130
+          size: 33
         }
         dim {
           size: 120
@@ -3954,7 +3595,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -3992,7 +3633,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -4003,7 +3644,7 @@ node {
   }
 }
 node {
-  name: "rnn/lstm_cell/bias/Initializer/zeros/shape_as_tensor"
+  name: "rnn/lstm_cell/bias/Initializer/zeros"
   op: "Const"
   attr {
     key: "_class"
@@ -4019,49 +3660,8 @@ node {
       list {
         shape {
           dim {
-            size: 1
+            size: 120
           }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 1
-          }
-        }
-        int_val: 120
-      }
-    }
-  }
-}
-node {
-  name: "rnn/lstm_cell/bias/Initializer/zeros/Const"
-  op: "Const"
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@rnn/lstm_cell/bias"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
         }
       }
     }
@@ -4078,47 +3678,12 @@ node {
       tensor {
         dtype: DT_FLOAT
         tensor_shape {
-        }
-        float_val: 0.0
-      }
-    }
-  }
-}
-node {
-  name: "rnn/lstm_cell/bias/Initializer/zeros"
-  op: "Fill"
-  input: "rnn/lstm_cell/bias/Initializer/zeros/shape_as_tensor"
-  input: "rnn/lstm_cell/bias/Initializer/zeros/Const"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@rnn/lstm_cell/bias"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
           dim {
             size: 120
           }
         }
+        float_val: 0.0
       }
-    }
-  }
-  attr {
-    key: "index_type"
-    value {
-      type: DT_INT32
     }
   }
 }
@@ -4305,7 +3870,7 @@ node {
             size: 10
           }
           dim {
-            size: 130
+            size: 33
           }
         }
       }
@@ -4367,7 +3932,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -5425,7 +4990,43 @@ node {
   }
 }
 node {
-  name: "model/rnn/Const_1"
+  name: "model/rnn/Const_2"
+  op: "Const"
+  attr {
+    key: "_output_shapes"
+    value {
+      list {
+        shape {
+          dim {
+            size: 2
+          }
+        }
+      }
+    }
+  }
+  attr {
+    key: "dtype"
+    value {
+      type: DT_INT32
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT32
+        tensor_shape {
+          dim {
+            size: 2
+          }
+        }
+        tensor_content: "\014\000\000\000\n\000\000\000"
+      }
+    }
+  }
+}
+node {
+  name: "model/rnn/Const_3"
   op: "Const"
   attr {
     key: "_output_shapes"
@@ -5889,30 +5490,37 @@ node {
 }
 node {
   name: "SparseSoftmaxCrossEntropyWithLogits/Shape"
-  op: "Shape"
-  input: "Placeholder_1"
-  attr {
-    key: "T"
-    value {
-      type: DT_INT64
-    }
-  }
+  op: "Const"
   attr {
     key: "_output_shapes"
     value {
       list {
         shape {
           dim {
-            size: -1
+            size: 1
           }
         }
       }
     }
   }
   attr {
-    key: "out_type"
+    key: "dtype"
     value {
       type: DT_INT32
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT32
+        tensor_shape {
+          dim {
+            size: 1
+          }
+        }
+        int_val: 10
+      }
     }
   }
 }
@@ -6290,15 +5898,13 @@ node {
   op: "NextIteration"
   input: "gradients/Add"
   input: "^gradients/model/rnn/while/TensorArrayWrite/TensorArrayWriteV3_grad/TensorArrayReadV3/StackPushV2"
+  input: "^gradients/model/rnn/while/lstm_cell/MatMul_grad/MatMul_1/StackPushV2"
+  input: "^gradients/model/rnn/while/lstm_cell/mul_1_grad/Mul/StackPushV2"
+  input: "^gradients/model/rnn/while/lstm_cell/mul_1_grad/Mul_1/StackPushV2"
   input: "^gradients/model/rnn/while/lstm_cell/mul_2_grad/Mul/StackPushV2"
   input: "^gradients/model/rnn/while/lstm_cell/mul_2_grad/Mul_1/StackPushV2"
   input: "^gradients/model/rnn/while/lstm_cell/mul_grad/Mul/StackPushV2"
   input: "^gradients/model/rnn/while/lstm_cell/mul_grad/Mul_1/StackPushV2"
-  input: "^gradients/model/rnn/while/lstm_cell/mul_1_grad/Mul/StackPushV2"
-  input: "^gradients/model/rnn/while/lstm_cell/mul_1_grad/Mul_1/StackPushV2"
-  input: "^gradients/model/rnn/while/lstm_cell/MatMul_grad/MatMul_1/StackPushV2"
-  input: "^gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPushV2"
-  input: "^gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPushV2_1"
   attr {
     key: "T"
     value {
@@ -6989,82 +6595,8 @@ node {
   }
 }
 node {
-  name: "gradients/zeros/shape_as_tensor"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 2
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 2
-          }
-        }
-        tensor_content: "\n\000\000\000\036\000\000\000"
-      }
-    }
-  }
-}
-node {
-  name: "gradients/zeros/Const"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_FLOAT
-        tensor_shape {
-        }
-        float_val: 0.0
-      }
-    }
-  }
-}
-node {
   name: "gradients/zeros"
-  op: "Fill"
-  input: "gradients/zeros/shape_as_tensor"
-  input: "gradients/zeros/Const"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
+  op: "Const"
   attr {
     key: "_output_shapes"
     value {
@@ -7081,61 +6613,6 @@ node {
     }
   }
   attr {
-    key: "index_type"
-    value {
-      type: DT_INT32
-    }
-  }
-}
-node {
-  name: "gradients/zeros_1/shape_as_tensor"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 2
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 2
-          }
-        }
-        tensor_content: "\n\000\000\000\036\000\000\000"
-      }
-    }
-  }
-}
-node {
-  name: "gradients/zeros_1/Const"
-  op: "Const"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-        }
-      }
-    }
-  }
-  attr {
     key: "dtype"
     value {
       type: DT_FLOAT
@@ -7147,6 +6624,12 @@ node {
       tensor {
         dtype: DT_FLOAT
         tensor_shape {
+          dim {
+            size: 10
+          }
+          dim {
+            size: 30
+          }
         }
         float_val: 0.0
       }
@@ -7155,15 +6638,7 @@ node {
 }
 node {
   name: "gradients/zeros_1"
-  op: "Fill"
-  input: "gradients/zeros_1/shape_as_tensor"
-  input: "gradients/zeros_1/Const"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
+  op: "Const"
   attr {
     key: "_output_shapes"
     value {
@@ -7180,9 +6655,26 @@ node {
     }
   }
   attr {
-    key: "index_type"
+    key: "dtype"
     value {
-      type: DT_INT32
+      type: DT_FLOAT
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_FLOAT
+        tensor_shape {
+          dim {
+            size: 10
+          }
+          dim {
+            size: 30
+          }
+        }
+        float_val: 0.0
+      }
     }
   }
 }
@@ -7950,15 +7442,13 @@ node {
   name: "gradients/model/rnn/while/TensorArrayWrite/TensorArrayWriteV3_grad/TensorArrayReadV3/b_sync"
   op: "ControlTrigger"
   input: "^gradients/model/rnn/while/TensorArrayWrite/TensorArrayWriteV3_grad/TensorArrayReadV3/StackPopV2"
+  input: "^gradients/model/rnn/while/lstm_cell/MatMul_grad/MatMul_1/StackPopV2"
+  input: "^gradients/model/rnn/while/lstm_cell/mul_1_grad/Mul/StackPopV2"
+  input: "^gradients/model/rnn/while/lstm_cell/mul_1_grad/Mul_1/StackPopV2"
   input: "^gradients/model/rnn/while/lstm_cell/mul_2_grad/Mul/StackPopV2"
   input: "^gradients/model/rnn/while/lstm_cell/mul_2_grad/Mul_1/StackPopV2"
   input: "^gradients/model/rnn/while/lstm_cell/mul_grad/Mul/StackPopV2"
   input: "^gradients/model/rnn/while/lstm_cell/mul_grad/Mul_1/StackPopV2"
-  input: "^gradients/model/rnn/while/lstm_cell/mul_1_grad/Mul/StackPopV2"
-  input: "^gradients/model/rnn/while/lstm_cell/mul_1_grad/Mul_1/StackPopV2"
-  input: "^gradients/model/rnn/while/lstm_cell/MatMul_grad/MatMul_1/StackPopV2"
-  input: "^gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPopV2"
-  input: "^gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPopV2_1"
 }
 node {
   name: "gradients/AddN"
@@ -10043,7 +9533,7 @@ node {
             size: 10
           }
           dim {
-            size: 130
+            size: 33
           }
         }
       }
@@ -10078,7 +9568,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -10123,7 +9613,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -10282,7 +9772,7 @@ node {
             size: 10
           }
           dim {
-            size: 130
+            size: 33
           }
         }
       }
@@ -10309,7 +9799,7 @@ node {
             size: 10
           }
           dim {
-            size: 130
+            size: 33
           }
         }
       }
@@ -10572,6 +10062,37 @@ node {
   }
 }
 node {
+  name: "gradients/model/rnn/while/lstm_cell/concat_grad/Const"
+  op: "Const"
+  input: "^gradients/Sub"
+  attr {
+    key: "_output_shapes"
+    value {
+      list {
+        shape {
+        }
+      }
+    }
+  }
+  attr {
+    key: "dtype"
+    value {
+      type: DT_INT32
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT32
+        tensor_shape {
+        }
+        int_val: 1
+      }
+    }
+  }
+}
+node {
   name: "gradients/model/rnn/while/lstm_cell/concat_grad/Rank"
   op: "Const"
   input: "^gradients/Sub"
@@ -10605,7 +10126,7 @@ node {
 node {
   name: "gradients/model/rnn/while/lstm_cell/concat_grad/mod"
   op: "FloorMod"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/mod/Const"
+  input: "gradients/model/rnn/while/lstm_cell/concat_grad/Const"
   input: "gradients/model/rnn/while/lstm_cell/concat_grad/Rank"
   attr {
     key: "T"
@@ -10624,122 +10145,17 @@ node {
   }
 }
 node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/mod/Const"
-  op: "Const"
-  input: "^gradients/Sub"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-        }
-        int_val: 1
-      }
-    }
-  }
-}
-node {
   name: "gradients/model/rnn/while/lstm_cell/concat_grad/Shape"
-  op: "Shape"
-  input: "model/rnn/while/TensorArrayReadV3"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 2
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "out_type"
-    value {
-      type: DT_INT32
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN"
-  op: "ShapeN"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPopV2"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPopV2_1"
-  attr {
-    key: "N"
-    value {
-      i: 2
-    }
-  }
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 2
-          }
-        }
-        shape {
-          dim {
-            size: 2
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "out_type"
-    value {
-      type: DT_INT32
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/Const"
   op: "Const"
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@model/rnn/while/TensorArrayReadV3"
-      }
-    }
-  }
+  input: "^gradients/Sub"
   attr {
     key: "_output_shapes"
     value {
       list {
         shape {
+          dim {
+            size: 2
+          }
         }
       }
     }
@@ -10756,412 +10172,17 @@ node {
       tensor {
         dtype: DT_INT32
         tensor_shape {
-        }
-        int_val: -1
-      }
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/f_acc"
-  op: "StackV2"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/Const"
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@model/rnn/while/TensorArrayReadV3"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
           dim {
             size: 2
           }
         }
-      }
-    }
-  }
-  attr {
-    key: "elem_type"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "stack_name"
-    value {
-      s: ""
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/Enter"
-  op: "Enter"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/f_acc"
-  attr {
-    key: "T"
-    value {
-      type: DT_RESOURCE
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 2
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "frame_name"
-    value {
-      s: "model/rnn/while/while_context"
-    }
-  }
-  attr {
-    key: "is_constant"
-    value {
-      b: true
-    }
-  }
-  attr {
-    key: "parallel_iterations"
-    value {
-      i: 32
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPushV2"
-  op: "StackPushV2"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/Enter"
-  input: "model/rnn/while/TensorArrayReadV3"
-  input: "^gradients/Add"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: -1
-          }
-          dim {
-            size: 100
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "swap_memory"
-    value {
-      b: false
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPopV2"
-  op: "StackPopV2"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPopV2/Enter"
-  input: "^gradients/Sub"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: -1
-          }
-          dim {
-            size: 100
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "elem_type"
-    value {
-      type: DT_FLOAT
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPopV2/Enter"
-  op: "Enter"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/f_acc"
-  attr {
-    key: "T"
-    value {
-      type: DT_RESOURCE
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 2
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "frame_name"
-    value {
-      s: "gradients/model/rnn/while/while_context"
-    }
-  }
-  attr {
-    key: "is_constant"
-    value {
-      b: true
-    }
-  }
-  attr {
-    key: "parallel_iterations"
-    value {
-      i: 32
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/Const_1"
-  op: "Const"
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@model/rnn/while/Identity_4"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-        }
-        int_val: -1
+        tensor_content: "\n\000\000\000\003\000\000\000"
       }
     }
   }
 }
 node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/f_acc_1"
-  op: "StackV2"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/Const_1"
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@model/rnn/while/Identity_4"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 2
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "elem_type"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "stack_name"
-    value {
-      s: ""
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/Enter_1"
-  op: "Enter"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/f_acc_1"
-  attr {
-    key: "T"
-    value {
-      type: DT_RESOURCE
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 2
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "frame_name"
-    value {
-      s: "model/rnn/while/while_context"
-    }
-  }
-  attr {
-    key: "is_constant"
-    value {
-      b: true
-    }
-  }
-  attr {
-    key: "parallel_iterations"
-    value {
-      i: 32
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPushV2_1"
-  op: "StackPushV2"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/Enter_1"
-  input: "model/rnn/while/Identity_4"
-  input: "^gradients/Add"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 10
-          }
-          dim {
-            size: 30
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "swap_memory"
-    value {
-      b: false
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPopV2_1"
-  op: "StackPopV2"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPopV2_1/Enter"
-  input: "^gradients/Sub"
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 10
-          }
-          dim {
-            size: 30
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "elem_type"
-    value {
-      type: DT_FLOAT
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/StackPopV2_1/Enter"
-  op: "Enter"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN/f_acc_1"
-  attr {
-    key: "T"
-    value {
-      type: DT_RESOURCE
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 2
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "frame_name"
-    value {
-      s: "gradients/model/rnn/while/while_context"
-    }
-  }
-  attr {
-    key: "is_constant"
-    value {
-      b: true
-    }
-  }
-  attr {
-    key: "parallel_iterations"
-    value {
-      i: 32
-    }
-  }
-}
-node {
-  name: "gradients/model/rnn/while/lstm_cell/concat_grad/Const"
+  name: "gradients/model/rnn/while/lstm_cell/concat_grad/Shape_1"
   op: "Const"
   input: "^gradients/Sub"
   attr {
@@ -11201,8 +10222,8 @@ node {
   name: "gradients/model/rnn/while/lstm_cell/concat_grad/ConcatOffset"
   op: "ConcatOffset"
   input: "gradients/model/rnn/while/lstm_cell/concat_grad/mod"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/Const"
+  input: "gradients/model/rnn/while/lstm_cell/concat_grad/Shape"
+  input: "gradients/model/rnn/while/lstm_cell/concat_grad/Shape_1"
   attr {
     key: "N"
     value {
@@ -11232,7 +10253,7 @@ node {
   op: "Slice"
   input: "gradients/model/rnn/while/lstm_cell/MatMul_grad/MatMul"
   input: "gradients/model/rnn/while/lstm_cell/concat_grad/ConcatOffset"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/ShapeN"
+  input: "gradients/model/rnn/while/lstm_cell/concat_grad/Shape"
   attr {
     key: "Index"
     value {
@@ -11251,10 +10272,10 @@ node {
       list {
         shape {
           dim {
-            size: -1
+            size: 10
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -11266,7 +10287,7 @@ node {
   op: "Slice"
   input: "gradients/model/rnn/while/lstm_cell/MatMul_grad/MatMul"
   input: "gradients/model/rnn/while/lstm_cell/concat_grad/ConcatOffset:1"
-  input: "gradients/model/rnn/while/lstm_cell/concat_grad/Const"
+  input: "gradients/model/rnn/while/lstm_cell/concat_grad/Shape_1"
   attr {
     key: "Index"
     value {
@@ -11304,7 +10325,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -11326,7 +10347,7 @@ node {
         dtype: DT_FLOAT
         tensor_shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -11353,7 +10374,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -11404,7 +10425,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -11433,7 +10454,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -11441,7 +10462,7 @@ node {
         }
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -11468,7 +10489,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -11494,7 +10515,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -11520,7 +10541,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -11997,10 +11018,10 @@ node {
             size: 12
           }
           dim {
-            size: -1
+            size: 10
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -12067,13 +11088,13 @@ node {
       list {
         shape {
           dim {
-            size: -1
+            size: 10
           }
           dim {
             size: 12
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -12119,7 +11140,7 @@ node {
             size: 2
           }
         }
-        tensor_content: "\350\003\000\000\000\000\000\000d\000\000\000\000\000\000\000"
+        tensor_content: "#\002\000\000\000\000\000\000\003\000\000\000\000\000\000\000"
       }
     }
   }
@@ -12163,14 +11184,7 @@ node {
 }
 node {
   name: "gradients/embedding_lookup_grad/Size"
-  op: "Size"
-  input: "Placeholder"
-  attr {
-    key: "T"
-    value {
-      type: DT_INT64
-    }
-  }
+  op: "Const"
   attr {
     key: "_output_shapes"
     value {
@@ -12181,9 +11195,20 @@ node {
     }
   }
   attr {
-    key: "out_type"
+    key: "dtype"
     value {
       type: DT_INT32
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT32
+        tensor_shape {
+        }
+        int_val: 120
+      }
     }
   }
 }
@@ -12507,10 +11532,10 @@ node {
       list {
         shape {
           dim {
-            size: -1
+            size: 120
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -12540,7 +11565,7 @@ node {
       list {
         shape {
           dim {
-            size: -1
+            size: 120
           }
         }
       }
@@ -13037,10 +12062,10 @@ node {
       list {
         shape {
           dim {
-            size: -1
+            size: 120
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -13071,10 +12096,10 @@ node {
       list {
         shape {
           dim {
-            size: -1
+            size: 120
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -13106,7 +12131,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -13140,7 +12165,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -13214,48 +12239,7 @@ node {
   }
 }
 node {
-  name: "global_step/Initializer/zeros/shape_as_tensor"
-  op: "Const"
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@global_step"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-          }
-        }
-      }
-    }
-  }
-}
-node {
-  name: "global_step/Initializer/zeros/Const"
+  name: "global_step/Initializer/zeros"
   op: "Const"
   attr {
     key: "_class"
@@ -13289,41 +12273,6 @@ node {
         }
         int64_val: 0
       }
-    }
-  }
-}
-node {
-  name: "global_step/Initializer/zeros"
-  op: "Fill"
-  input: "global_step/Initializer/zeros/shape_as_tensor"
-  input: "global_step/Initializer/zeros/Const"
-  attr {
-    key: "T"
-    value {
-      type: DT_INT64
-    }
-  }
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@global_step"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-        }
-      }
-    }
-  }
-  attr {
-    key: "index_type"
-    value {
-      type: DT_INT32
     }
   }
 }
@@ -13481,7 +12430,7 @@ node {
             size: 2
           }
         }
-        tensor_content: "\350\003\000\000d\000\000\000"
+        tensor_content: "#\002\000\000\003\000\000\000"
       }
     }
   }
@@ -13549,10 +12498,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -13582,10 +12531,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -13608,10 +12557,10 @@ node {
     value {
       shape {
         dim {
-          size: 1000
+          size: 547
         }
         dim {
-          size: 100
+          size: 3
         }
       }
     }
@@ -13648,10 +12597,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -13694,10 +12643,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -13743,7 +12692,7 @@ node {
             size: 2
           }
         }
-        tensor_content: "\350\003\000\000d\000\000\000"
+        tensor_content: "#\002\000\000\003\000\000\000"
       }
     }
   }
@@ -13811,10 +12760,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -13844,10 +12793,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -13870,10 +12819,10 @@ node {
     value {
       shape {
         dim {
-          size: 1000
+          size: 547
         }
         dim {
-          size: 100
+          size: 3
         }
       }
     }
@@ -13910,10 +12859,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -13956,10 +12905,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -14005,7 +12954,7 @@ node {
             size: 2
           }
         }
-        tensor_content: "\202\000\000\000x\000\000\000"
+        tensor_content: "!\000\000\000x\000\000\000"
       }
     }
   }
@@ -14073,7 +13022,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -14106,7 +13055,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -14132,7 +13081,7 @@ node {
     value {
       shape {
         dim {
-          size: 130
+          size: 33
         }
         dim {
           size: 120
@@ -14172,7 +13121,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -14218,7 +13167,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -14267,7 +13216,7 @@ node {
             size: 2
           }
         }
-        tensor_content: "\202\000\000\000x\000\000\000"
+        tensor_content: "!\000\000\000x\000\000\000"
       }
     }
   }
@@ -14335,7 +13284,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -14368,7 +13317,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -14394,7 +13343,7 @@ node {
     value {
       shape {
         dim {
-          size: 130
+          size: 33
         }
         dim {
           size: 120
@@ -14434,7 +13383,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -14480,7 +13429,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -14491,7 +13440,7 @@ node {
   }
 }
 node {
-  name: "rnn/lstm_cell/bias/RMSProp/Initializer/ones/shape_as_tensor"
+  name: "rnn/lstm_cell/bias/RMSProp/Initializer/ones"
   op: "Const"
   attr {
     key: "_class"
@@ -14507,49 +13456,8 @@ node {
       list {
         shape {
           dim {
-            size: 1
+            size: 120
           }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 1
-          }
-        }
-        int_val: 120
-      }
-    }
-  }
-}
-node {
-  name: "rnn/lstm_cell/bias/RMSProp/Initializer/ones/Const"
-  op: "Const"
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@rnn/lstm_cell/bias"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
         }
       }
     }
@@ -14566,47 +13474,12 @@ node {
       tensor {
         dtype: DT_FLOAT
         tensor_shape {
-        }
-        float_val: 1.0
-      }
-    }
-  }
-}
-node {
-  name: "rnn/lstm_cell/bias/RMSProp/Initializer/ones"
-  op: "Fill"
-  input: "rnn/lstm_cell/bias/RMSProp/Initializer/ones/shape_as_tensor"
-  input: "rnn/lstm_cell/bias/RMSProp/Initializer/ones/Const"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@rnn/lstm_cell/bias"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
           dim {
             size: 120
           }
         }
+        float_val: 1.0
       }
-    }
-  }
-  attr {
-    key: "index_type"
-    value {
-      type: DT_INT32
     }
   }
 }
@@ -14738,98 +13611,8 @@ node {
   }
 }
 node {
-  name: "rnn/lstm_cell/bias/RMSProp_1/Initializer/zeros/shape_as_tensor"
-  op: "Const"
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@rnn/lstm_cell/bias"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-          dim {
-            size: 1
-          }
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_INT32
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_INT32
-        tensor_shape {
-          dim {
-            size: 1
-          }
-        }
-        int_val: 120
-      }
-    }
-  }
-}
-node {
-  name: "rnn/lstm_cell/bias/RMSProp_1/Initializer/zeros/Const"
-  op: "Const"
-  attr {
-    key: "_class"
-    value {
-      list {
-        s: "loc:@rnn/lstm_cell/bias"
-      }
-    }
-  }
-  attr {
-    key: "_output_shapes"
-    value {
-      list {
-        shape {
-        }
-      }
-    }
-  }
-  attr {
-    key: "dtype"
-    value {
-      type: DT_FLOAT
-    }
-  }
-  attr {
-    key: "value"
-    value {
-      tensor {
-        dtype: DT_FLOAT
-        tensor_shape {
-        }
-        float_val: 0.0
-      }
-    }
-  }
-}
-node {
   name: "rnn/lstm_cell/bias/RMSProp_1/Initializer/zeros"
-  op: "Fill"
-  input: "rnn/lstm_cell/bias/RMSProp_1/Initializer/zeros/shape_as_tensor"
-  input: "rnn/lstm_cell/bias/RMSProp_1/Initializer/zeros/Const"
-  attr {
-    key: "T"
-    value {
-      type: DT_FLOAT
-    }
-  }
+  op: "Const"
   attr {
     key: "_class"
     value {
@@ -14851,9 +13634,23 @@ node {
     }
   }
   attr {
-    key: "index_type"
+    key: "dtype"
     value {
-      type: DT_INT32
+      type: DT_FLOAT
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_FLOAT
+        tensor_shape {
+          dim {
+            size: 120
+          }
+        }
+        float_val: 0.0
+      }
     }
   }
 }
@@ -15133,7 +13930,7 @@ node {
         }
         shape {
           dim {
-            size: -1
+            size: 120
           }
         }
       }
@@ -15423,7 +14220,7 @@ node {
             size: -1
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -15468,10 +14265,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -15515,7 +14312,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -15579,8 +14376,8 @@ node {
   name: "RMSProp/update"
   op: "NoOp"
   input: "^RMSProp/update_Variable/SparseApplyRMSProp"
-  input: "^RMSProp/update_rnn/lstm_cell/kernel/ApplyRMSProp"
   input: "^RMSProp/update_rnn/lstm_cell/bias/ApplyRMSProp"
+  input: "^RMSProp/update_rnn/lstm_cell/kernel/ApplyRMSProp"
 }
 node {
   name: "RMSProp/value"
@@ -16018,10 +14815,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -16065,10 +14862,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -16112,10 +14909,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -16332,7 +15129,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -16379,7 +15176,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -16426,7 +15223,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -16739,15 +15536,15 @@ node {
   name: "init"
   op: "NoOp"
   input: "^Variable/Assign"
-  input: "^rnn/lstm_cell/kernel/Assign"
-  input: "^rnn/lstm_cell/bias/Assign"
-  input: "^global_step/Assign"
   input: "^Variable/RMSProp/Assign"
   input: "^Variable/RMSProp_1/Assign"
-  input: "^rnn/lstm_cell/kernel/RMSProp/Assign"
-  input: "^rnn/lstm_cell/kernel/RMSProp_1/Assign"
+  input: "^global_step/Assign"
+  input: "^rnn/lstm_cell/bias/Assign"
   input: "^rnn/lstm_cell/bias/RMSProp/Assign"
   input: "^rnn/lstm_cell/bias/RMSProp_1/Assign"
+  input: "^rnn/lstm_cell/kernel/Assign"
+  input: "^rnn/lstm_cell/kernel/RMSProp/Assign"
+  input: "^rnn/lstm_cell/kernel/RMSProp_1/Assign"
 }
 node {
   name: "init_1"
@@ -18115,11 +16912,49 @@ node {
   }
 }
 node {
-  name: "report_uninitialized_variables/boolean_mask/Gather"
-  op: "Gather"
+  name: "report_uninitialized_variables/boolean_mask/GatherV2/axis"
+  op: "Const"
+  device: "/device:CPU:0"
+  attr {
+    key: "_output_shapes"
+    value {
+      list {
+        shape {
+        }
+      }
+    }
+  }
+  attr {
+    key: "dtype"
+    value {
+      type: DT_INT32
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT32
+        tensor_shape {
+        }
+        int_val: 0
+      }
+    }
+  }
+}
+node {
+  name: "report_uninitialized_variables/boolean_mask/GatherV2"
+  op: "GatherV2"
   input: "report_uninitialized_variables/boolean_mask/Reshape"
   input: "report_uninitialized_variables/boolean_mask/Squeeze"
+  input: "report_uninitialized_variables/boolean_mask/GatherV2/axis"
   device: "/device:CPU:0"
+  attr {
+    key: "Taxis"
+    value {
+      type: DT_INT32
+    }
+  }
   attr {
     key: "Tindices"
     value {
@@ -18142,12 +16977,6 @@ node {
           }
         }
       }
-    }
-  }
-  attr {
-    key: "validate_indices"
-    value {
-      b: true
     }
   }
 }
@@ -18218,7 +17047,7 @@ node {
 node {
   name: "concat"
   op: "ConcatV2"
-  input: "report_uninitialized_variables/boolean_mask/Gather"
+  input: "report_uninitialized_variables/boolean_mask/GatherV2"
   input: "report_uninitialized_resources/Const"
   input: "concat/axis"
   attr {
@@ -19608,11 +18437,49 @@ node {
   }
 }
 node {
-  name: "report_uninitialized_variables_1/boolean_mask/Gather"
-  op: "Gather"
+  name: "report_uninitialized_variables_1/boolean_mask/GatherV2/axis"
+  op: "Const"
+  device: "/device:CPU:0"
+  attr {
+    key: "_output_shapes"
+    value {
+      list {
+        shape {
+        }
+      }
+    }
+  }
+  attr {
+    key: "dtype"
+    value {
+      type: DT_INT32
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT32
+        tensor_shape {
+        }
+        int_val: 0
+      }
+    }
+  }
+}
+node {
+  name: "report_uninitialized_variables_1/boolean_mask/GatherV2"
+  op: "GatherV2"
   input: "report_uninitialized_variables_1/boolean_mask/Reshape"
   input: "report_uninitialized_variables_1/boolean_mask/Squeeze"
+  input: "report_uninitialized_variables_1/boolean_mask/GatherV2/axis"
   device: "/device:CPU:0"
+  attr {
+    key: "Taxis"
+    value {
+      type: DT_INT32
+    }
+  }
   attr {
     key: "Tindices"
     value {
@@ -19637,12 +18504,6 @@ node {
       }
     }
   }
-  attr {
-    key: "validate_indices"
-    value {
-      b: true
-    }
-  }
 }
 node {
   name: "init_2"
@@ -19660,8 +18521,8 @@ node {
   name: "group_deps_1"
   op: "NoOp"
   input: "^init_2"
-  input: "^init_all_tables"
   input: "^init_3"
+  input: "^init_all_tables"
 }
 node {
   name: "save_1/Const"
@@ -19718,7 +18579,7 @@ node {
         dtype: DT_STRING
         tensor_shape {
         }
-        string_val: "_temp_3e63e38df7a44ad69a295e732d64f4f8/part"
+        string_val: "_temp_2181977cfe0a456181cbe00936fcb17a/part"
       }
     }
   }
@@ -20039,8 +18900,8 @@ node {
   name: "save_1/Identity"
   op: "Identity"
   input: "save_1/Const"
-  input: "^save_1/control_dependency"
   input: "^save_1/MergeV2Checkpoints"
+  input: "^save_1/control_dependency"
   device: "/device:CPU:0"
   attr {
     key: "T"
@@ -20237,10 +19098,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -20284,10 +19145,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -20331,10 +19192,10 @@ node {
       list {
         shape {
           dim {
-            size: 1000
+            size: 547
           }
           dim {
-            size: 100
+            size: 3
           }
         }
       }
@@ -20551,7 +19412,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -20598,7 +19459,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120
@@ -20645,7 +19506,7 @@ node {
       list {
         shape {
           dim {
-            size: 130
+            size: 33
           }
           dim {
             size: 120

@@ -50,13 +50,11 @@ def train(vocabulary_size=FLAGS.vocabulary_size,
     embeddings = tf.Variable(
             tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0))
     embed = tf.nn.embedding_lookup(embeddings, inputs)
-    print(embed)
 
     # Get model's logits
     # The shape for logits is [batch_size, max_classes]
     logits = Model().run_model(batch_size=FLAGS.batch_size,
                                input_sequence=embed)
-    print(logits)
     # Define loss function
     train_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=logits, labels=labels)
@@ -104,7 +102,6 @@ def train(vocabulary_size=FLAGS.vocabulary_size,
     ) as sess:
         total_loss = 0
         for train_iteration in range(num_training_iterations):
-            print(train_iteration)
             # Read data.
             inputs_batch, labels_batch = utils.read_batch_data(
                     start_line=train_iteration*FLAGS.batch_size+1,
