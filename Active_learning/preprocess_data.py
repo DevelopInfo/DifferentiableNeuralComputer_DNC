@@ -6,7 +6,8 @@ FILE_PATH = "corpus.txt"
 DICT_NAME = "word_dict.txt"
 STOP_WORD = "stop_word.txt"
 TEST_PATH = "test.txt"
-ENCODING_FILE = "encoded_test.json"
+TEST_JSON_FILE = "test.json"
+TRAIN_JSON_FILE = "train.json"
 
 
 def create_dictoinary(data_file, dict_file, stop_word):
@@ -48,27 +49,11 @@ def train_to_test(train_file, test_file):
     test_obj.close()
 
 
-def encoding_data(input_file=TEST_PATH,
-                  encoding_file=ENCODING_FILE,
-                  dict_file=DICT_NAME,
-                  stop_word=STOP_WORD):
-    """Make an encoding file
-    Args:
-        input_file: input_file is a common file.
-        encoding_file: encoding_file is a json format file and is encoded.
-    """
-    encoding_file = open(encoding_file, 'w')
-
-    # Create a dictionary.
-    dict = {}
-    dict_counter = 1
-    with open(dict_file, 'r') as dict_obj:
-        for line in dict_obj:
-            for word in line:
-                if word == "\n":
-                    continue
-                dict[word] = dict_counter
-                dict_counter += 1
+def txt_to_json(batch_size=-1,
+                json_file=TRAIN_JSON_FILE,
+                input_file=TEST_PATH,
+                stop_word=STOP_WORD):
+    train_obj = open(json_file, 'w', encoding='utf-8')
 
     # Create a list of stop word
     stop_word_list = []
@@ -77,21 +62,25 @@ def encoding_data(input_file=TEST_PATH,
             for word in line:
                 stop_word_list.append(word)
 
-    # Get the max length for sentence.
-    max_sentence = 0
-    with open(input_file, 'r') as input_obj:
-        for line in input_obj:
-            counter = 0
-            for word in line:
-                if word in stop_word_list:
-                    continue
-                counter += 1
-                if counter > max_sentence:
-                    max_sentence = counter
+    # # Get the max length for sentence.
+    # max_sentence = 0
+    # with open(input_file, 'r') as input_obj:
+    #     for index, line in enumerate(input_obj):
+    #         counter = 0
+    #         for word in line:
+    #             if word in stop_word_list:
+    #                 continue
+    #             counter += 1
+    #             if counter > max_sentence:
+    #                 max_sentence = counter
+    #                 max_index = index
+    #     print(max_index)
 
     # Encode data, padding data and create json file
-    with open(input_file, 'r') as input_obj:
-        for line in input_obj:
+    with open(input_file, 'r', encoding='utf-8') as input_obj:
+        for index, line in enumerate(input_obj):
+            if batch_size != -1 and index >= batch_size:
+                break
             data_dict = {}
             data_dict["label"] = ""
             data_dict["input"] = ""
@@ -100,21 +89,83 @@ def encoding_data(input_file=TEST_PATH,
                 if word in stop_word_list:
                     continue
                 counter += 1
-                data_dict["input"] = data_dict["input"] + "%d " % int(dict[word])
+                data_dict["input"] = data_dict["input"] + word
 
-            # padding data
-            if counter < max_sentence:
-                while counter < max_sentence:
-                    counter += 1
-                    data_dict["input"] = data_dict["input"] + "%d " % 0
-            json_str = json.dumps(data_dict)
-            encoding_file.write(json_str+"\n")
+            # # padding data
+            # if counter < max_sentence:
+            #     while counter < max_sentence:
+            #         counter += 1
+            #         data_dict["input"] = data_dict["input"] + "%d " % 0
 
-    encoding_file.close()
+            json_str = json.dumps(data_dict).encode('utf-8').decode('unicode-escape')
+            train_obj.write(json_str + "\n")
+
+    train_obj.close()
+
+
+# ENCODED_TEST_FILE = "encoded_test.json"
+# ENCODED_TRAINING_FILE = "encoded_train.json"
+
+# def encodine_data(raw_file=TRAIN_JSON_FILE,
+#                   encoded_file=ENCODED_TRAINING_FILE,
+#                   dict_file=DICT_NAME,
+#                   stop_file=STOP_WORD):
+#     """Encoding training data
+#     Args:
+#         raw_file: require to a json format file.
+#         encoded_file: a encoded training file is also a json format file.
+#     """
+#     # Create a dictionary.
+#     dict = {}
+#     dict_counter = 1
+#     with open(dict_file, 'r', encoding="utf-8") as dict_obj:
+#         for line in dict_obj:
+#             for word in line:
+#                 if word == "\n":
+#                     continue
+#                 dict[word] = dict_counter
+#                 dict_counter += 1
+#
+#     # Create a list of stop word
+#     stop_word_list = []
+#     with open(stop_file, 'r', encoding="utf-8") as stop_obj:
+#         for line in stop_obj:
+#             for word in line:
+#                 stop_word_list.append(word)
+#
+#     # Open the encoded training file
+#     encoded_training_obj = open(encoded_file, 'w',
+#                                 encoding="utf-8")
+#     # Read json file:
+#     with open(raw_file, 'r', encoding="utf-8") as file_obj:
+#         for line in file_obj:
+#             decoded_dict = json.loads(line)
+#             encoded_dict = {}
+#             encoded_dict["label"] = decoded_dict["label"]
+#             encoded_dict["input"] = ""
+#             for word in decoded_dict["input"]:
+#                 if word != '0' and word in stop_word_list:
+#                     continue
+#                 if word == '0':
+#                     encoded_dict["input"] = encoded_dict["input"] + "0 "
+#                 else:
+#                     encoded_dict["input"] = encoded_dict["input"] + "%d" % dict[word] + " "
+#             encoded_str = json.dumps(encoded_dict)
+#             encoded_training_obj.write(encoded_str+"\n")
+#     encoded_training_obj.close()
 
 
 if __name__ == "__main__":
     # create_dictoinary(FILE_PATH, DICT_NAME, STOP_WORD)
-    # train_to_test(FILE_PATH, TEST_PATH)
-    encoding_data(TEST_PATH, ENCODING_FILE, DICT_NAME, STOP_WORD)
-    pass
+
+    # test.txt to train.json
+    txt_to_json(batch_size=40, json_file=TRAIN_JSON_FILE)
+
+    # test.txt to test.json
+    txt_to_json(json_file=TEST_JSON_FILE)
+
+    # encoding train.json to encoded_train.json
+    # encodine_data(raw_file=TRAIN_JSON_FILE)
+
+    # encoding text.json to encoded_test.json
+    # encodine_data(raw_file=TEST_JSON_FILE)

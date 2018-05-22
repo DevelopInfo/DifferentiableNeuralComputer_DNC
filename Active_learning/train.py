@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import tensorflow as tf
+import numpy as np
+import random
 from model import Model
 import utils
 
@@ -15,6 +17,8 @@ tf.flags.DEFINE_integer("word_embedding_size", 3,
                         "the size for word embedding.")
 tf.flags.DEFINE_integer("vocabulary_size", 547,
                         "the size for vocabulary")
+tf.flags.DEFINE_string("train_file", "train.json",
+                       "training file.")
 
 # Training options.
 tf.flags.DEFINE_integer("num_training_iterations", 1000,
@@ -41,10 +45,10 @@ def train(vocabulary_size=FLAGS.vocabulary_size,
           report_interval=FLAGS.report_interval):
     # Define the placeholder
     inputs = tf.placeholder(
-        shape=(FLAGS.batch_size, FLAGS.time),
+        shape=(None, None),
         dtype=tf.int64)
     labels = tf.placeholder(
-        shape=FLAGS.batch_size, dtype=tf.int64)
+        shape=[None], dtype=tf.int64)
 
     # Word embedding
     embeddings = tf.Variable(
@@ -101,22 +105,36 @@ def train(vocabulary_size=FLAGS.vocabulary_size,
         hooks=hooks, checkpoint_dir=FLAGS.checkpoint_dir
     ) as sess:
         total_loss = 0
+        # Read data set
+        data_set = utils.encoding_and_read_data(raw_file=FLAGS.train_file)
+
         for train_iteration in range(num_training_iterations):
             # Read data.
-            inputs_batch, labels_batch = utils.read_batch_data(
-                    start_line=train_iteration*FLAGS.batch_size+1,
-                    batch_size=FLAGS.batch_size)
+            random.shuffle(data_set)
 
-            # Run the session.
-            _, average_loss_val = sess.run(fetches=[train_step, average_loss],
-                                           feed_dict={inputs: inputs_batch,
-                                                      labels: labels_batch})
-            total_loss += average_loss_val
+            # batch training
+            batch_iteration = 0
+            while 1:
+                labels_batch, inputs_batch, index = utils.read_batch_data(
+                    pos=batch_iteration*FLAGS.batch_size,
+                    batch_size=FLAGS.batch_size,
+                    data_set=data_set)
+                if index != FLAGS.batch_size:
+                    break
+                # print(inputs_batch)
+                labels_batch = np.squeeze(labels_batch)
+                batch_iteration += 1
+
+                # Run the session.
+                _, average_loss_val = sess.run(fetches=[train_step, average_loss],
+                                               feed_dict={inputs: inputs_batch,
+                                                          labels: labels_batch})
+                total_loss += average_loss_val
 
             # Report the result.
             if train_iteration % report_interval == 0:
                 tf.logging.info("%d: Avg training loss %f.\n",
-                                train_iteration, total_loss / report_interval)
+                                train_iteration, total_loss / (report_interval * batch_iteration))
                 total_loss = 0
 
 
